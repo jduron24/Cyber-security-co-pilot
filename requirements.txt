@@ -10,3 +10,4 @@ psycopg[binary]
 httpx
 pytest
 pgembed
+streamlit

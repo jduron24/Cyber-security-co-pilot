@@ -101,16 +101,8 @@ def test_backend_incident_routes(monkeypatch):
     app.dependency_overrides.clear()
 
 
-def test_backend_operator_and_agent_routes(monkeypatch):
-    from backend import api as _unused  # noqa: F401
-    import backend.api.agent as agent_api
-
+def test_backend_operator_routes():
     app.dependency_overrides[get_operator_decision_service] = lambda: FakeOperatorDecisionService()
-    monkeypatch.setattr(
-        agent_api,
-        "run_agent_query",
-        lambda incident_id, user_query, policy_version=None: {"incident_id": incident_id, "answer": f"Handled: {user_query}"},
-    )
     client = TestClient(app)
 
     approve_response = client.post("/incidents/incident-1/approve", json={"rationale": "Looks valid"})
@@ -120,9 +112,5 @@ def test_backend_operator_and_agent_routes(monkeypatch):
     alt_response = client.post("/incidents/incident-1/alternative", json={"action_id": "escalate_to_expert"})
     assert alt_response.status_code == 200
     assert alt_response.json()["result"]["decision_type"] == "choose_alternative"
-
-    agent_response = client.post("/incidents/incident-1/agent-query", json={"user_query": "What should I do next?"})
-    assert agent_response.status_code == 200
-    assert "Handled" in agent_response.json()["result"]["answer"]
 
     app.dependency_overrides.clear()

@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
-from fastapi import HTTPException
 
-from backend.dependencies import run_agent_query
+from agent_backend.dependencies import as_http_exception, run_agent_query
 from backend.models import AgentQueryRequest, AgentQueryResponse
 
 router = APIRouter(prefix="/incidents/{incident_id}", tags=["agent"])
@@ -18,5 +17,5 @@ def agent_query(incident_id: str, request: AgentQueryRequest) -> AgentQueryRespo
             policy_version=request.policy_version,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise as_http_exception(exc) from exc
     return AgentQueryResponse(result=result)

@@ -2,6 +2,7 @@
 param(
     [string]$BindHost = "127.0.0.1",
     [int]$BackendPort = 8000,
+    [int]$AgentPort = 8001,
     [switch]$IncludeMcpServer,
     [switch]$InstallNodeDeps,
     [switch]$DryRun
@@ -119,6 +120,7 @@ $runRoot = Join-Path $repoRoot ".local\services"
 $logRoot = Join-Path $runRoot "logs"
 $statePath = Join-Path $runRoot "local_services.json"
 $backendUrl = "http://$BindHost`:$BackendPort"
+$agentUrl = "http://$BindHost`:$AgentPort"
 
 New-Item -ItemType Directory -Path $logRoot -Force | Out-Null
 
@@ -174,6 +176,45 @@ else {
         url = $backendUrl
         stdout_log = $backendStdOut
         stderr_log = $backendStdErr
+    }
+}
+
+$agentStdOut = Join-Path $logRoot "agent.stdout.log"
+$agentStdErr = Join-Path $logRoot "agent.stderr.log"
+$agentArgs = @(
+    "-m", "uvicorn",
+    "agent_backend.main:app",
+    "--host", $BindHost,
+    "--port", "$AgentPort",
+    "--reload"
+)
+
+if ($DryRun) {
+    $services += [ordered]@{
+        name = "agent"
+        command = $pythonExe
+        arguments = $agentArgs
+        url = $agentUrl
+        stdout_log = $agentStdOut
+        stderr_log = $agentStdErr
+    }
+}
+else {
+    $agentProcess = Start-LoggedProcess `
+        -FilePath $pythonExe `
+        -ArgumentList $agentArgs `
+        -WorkingDirectory $repoRoot `
+        -StdOutPath $agentStdOut `
+        -StdErrPath $agentStdErr
+
+    Wait-ForBackend -Url "$agentUrl/health"
+
+    $services += [ordered]@{
+        name = "agent"
+        pid = $agentProcess.Id
+        url = $agentUrl
+        stdout_log = $agentStdOut
+        stderr_log = $agentStdErr
     }
 }
 

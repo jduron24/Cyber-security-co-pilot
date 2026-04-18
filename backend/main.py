@@ -4,7 +4,6 @@ from fastapi import FastAPI
 
 from src.logging_utils import configure_logging
 
-from .api.agent import router as agent_router
 from .api.health import router as health_router
 from .api.incidents import router as incidents_router
 from .api.operator_actions import router as operator_actions_router
@@ -18,7 +17,6 @@ def create_app() -> FastAPI:
     app.include_router(search_router)
     app.include_router(incidents_router)
     app.include_router(operator_actions_router)
-    app.include_router(agent_router)
     return app
 
 

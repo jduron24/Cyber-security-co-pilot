@@ -166,3 +166,24 @@ Default config lives in `configs/pipeline_config.yaml` and behavioral flag rules
 - `src/services/agent_app_service.py`: application factory and convenience entrypoint for OpenAI-compatible incident queries
 - `decision_support/`: standalone package for deterministic non-expert decision guidance
 - `notebooks/sanity_checks.ipynb`: starter notebook for quick inspection
+## Sentinel UI
+
+The Streamlit demo client in [sentinel_app.py](/C:/Users/ejtal/Downloads/judgment_drift/Cyber-security-co-pilot/sentinel_app.py) is wired to the FastAPI backend over HTTP.
+
+Start the backend locally:
+
+```powershell
+.\scripts\start_local.ps1
+```
+
+This starts the core FastAPI backend on `:8000` and the dedicated agent service on `:8001`.
+
+Run the Sentinel UI:
+
+```powershell
+$env:SENTINEL_BACKEND_URL="http://127.0.0.1:8000"
+$env:SENTINEL_AGENT_URL="http://127.0.0.1:8001"
+.\.venv\Scripts\python.exe -m streamlit run .\sentinel_app.py
+```
+
+If the backend is unavailable, the app falls back to a built-in mock incident bundle so the UI still renders.

@@ -8,14 +8,11 @@ from dotenv import load_dotenv
 from fastapi import HTTPException
 
 from src.db.connection import create_connection, load_postgres_config
-from src.logging_utils import get_logger
 from src.repositories.service_bundles import (
-    AgentRepositoryBundle,
     CoverageReviewRepositoryBundle,
     DecisionSupportRepositoryBundle,
     OperatorDecisionRepositoryBundle,
 )
-from src.services.agent_app_service import query_incident_agent
 from src.services.coverage_review_service import CoverageReviewAppService
 from src.services.decision_support_app_service import DecisionSupportAppService
 from src.services.operator_decision_service import OperatorDecisionAppService
@@ -23,7 +20,6 @@ from src.services.operator_decision_service import OperatorDecisionAppService
 from .knowledge_base import KnowledgeBaseRepository
 
 load_dotenv()
-logger = get_logger(__name__)
 
 
 def get_backend_env() -> dict[str, str]:
@@ -67,16 +63,6 @@ def get_coverage_review_repositories() -> CoverageReviewRepositoryBundle:
 
 def get_knowledge_base_repository() -> KnowledgeBaseRepository:
     return KnowledgeBaseRepository(connection_factory=get_connection_factory())
-
-
-def run_agent_query(incident_id: str, user_query: str, policy_version: str | None = None) -> dict[str, Any]:
-    logger.info("Backend agent query incident_id=%s", incident_id)
-    return query_incident_agent(
-        incident_id=incident_id,
-        user_query=user_query,
-        policy_version=policy_version,
-        env=get_backend_env(),
-    )
 
 
 def as_http_exception(exc: ValueError) -> HTTPException:
