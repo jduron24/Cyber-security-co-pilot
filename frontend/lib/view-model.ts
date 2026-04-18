@@ -63,6 +63,7 @@ export interface CyberAuditEntry {
 export interface IncidentViewModel {
   title: string;
   incidentId: string;
+  incidentLabel: string;
   severity: string;
   site: string;
   incidentWindow: string | null;
@@ -73,6 +74,7 @@ export interface IncidentViewModel {
   recommendationMayBeIncomplete: boolean;
   incompletenessWarning: string | null;
   decisionRiskNote: string;
+  plainLanguageConcernSummary: string;
   recommendedAction: {
     actionId: string;
     label: string;
@@ -366,6 +368,9 @@ export function buildIncidentViewModel(
   return {
     title: asString(incidentSummary.title ?? incidentRecord.title, "Suspicious access activity"),
     incidentId: asString(incidentRecord.incident_id, selectedIncidentId),
+    incidentLabel:
+      INCIDENT_QUEUE_LABELS[asString(incidentSummary.title ?? incidentRecord.title, "Suspicious access activity")] ??
+      asString(incidentRecord.incident_id, selectedIncidentId),
     severity: toSentenceCase(asString(incidentSummary.risk_band ?? incidentRecord.severity_hint, "high")),
     site: asString(asRecord(incidentRecord.entities).primary_source_ip_address ?? incidentRecord.title, "Unknown site"),
     incidentWindow: formatIncidentWindow(incidentRecord.start_time, incidentRecord.end_time),
@@ -381,6 +386,7 @@ export function buildIncidentViewModel(
     recommendationMayBeIncomplete: asBoolean(coverageReviewRecord.recommendation_may_be_incomplete),
     incompletenessWarning: asOptionalString(completeness.warning),
     decisionRiskNote: asString(coverageReviewRecord.decision_risk_note, "Review available evidence before acting."),
+    plainLanguageConcernSummary: buildPlainLanguageConcernSummary(topSignals.map((item) => asString(item.label ?? item.feature, "signal")), eventSequence),
     recommendedAction: {
       actionId: asString(recommendedAction.action_id, "recommended_action"),
       label: asString(recommendedAction.label ?? recommendedAction.action_id, "Recommended action"),
@@ -517,6 +523,66 @@ function buildPlainLanguageWhatHappened(
   const signalSummary = signals.length ? ` The main reasons are ${joinHumanList(signals.slice(0, 3).map((item) => item.toLowerCase()))}.` : "";
   const cleanedSummary = summary && summary !== "Incident summary unavailable." ? ` ${toSentenceStart(summary)}` : "";
   return `Sentinel found suspicious activity affecting ${site}.${signalSummary}${cleanedSummary}`;
+}
+
+function buildPlainLanguageConcernSummary(signals: string[], eventSequence: string[]): string {
+  const normalizedSignals = new Set(
+    signals
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const normalizedEvents = new Set(
+    eventSequence
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean),
+  );
+
+  const statements: string[] = [];
+
+  if (normalizedSignals.has("console_login") || normalizedEvents.has("consolelogin")) {
+    statements.push("Someone signed in interactively through the AWS console");
+  }
+  if (
+    normalizedSignals.has("recon_activity") ||
+    normalizedSignals.has("ec2_sequence") ||
+    normalizedEvents.has("describeinstances") ||
+    normalizedEvents.has("describenetworkinterfaces")
+  ) {
+    statements.push("the account then looked around existing cloud resources");
+  }
+  if (
+    normalizedSignals.has("resource_creation") ||
+    normalizedSignals.has("recon_plus_resource_creation") ||
+    normalizedSignals.has("resource_creation_after_login") ||
+    normalizedEvents.has("runinstances") ||
+    normalizedEvents.has("createaccesskey") ||
+    normalizedEvents.has("createuser")
+  ) {
+    statements.push("new resources or access changes followed soon after");
+  }
+  if (normalizedSignals.has("privilege_change") || normalizedSignals.has("recon_plus_privilege")) {
+    statements.push("permissions or access appear to have changed during the same sequence");
+  }
+  if (normalizedSignals.has("active_network_beaconing") || normalizedSignals.has("ongoing_session_activity")) {
+    statements.push("the activity may still be ongoing");
+  }
+
+  if (statements.length >= 3) {
+    return `${toSentenceStart(statements[0])}, ${statements[1]}, and ${statements[2]}. This sequence is concerning because it looks like hands-on activity after access was gained.`;
+  }
+  if (statements.length === 2) {
+    return `${toSentenceStart(statements[0])}, and ${statements[1]}. Together, that pattern is more concerning than any one event on its own.`;
+  }
+  if (statements.length === 1) {
+    return `${toSentenceStart(statements[0])}. The system flagged it because this kind of activity often appears in suspicious hands-on sessions.`;
+  }
+
+  const humanSignals = signals.map((item) => displayLabel(item, item).toLowerCase()).slice(0, 3);
+  if (humanSignals.length) {
+    return `The system is concerned because it saw signs of ${joinHumanList(humanSignals)} in the same incident. That combination can indicate suspicious account activity.`;
+  }
+
+  return "The system is concerned because several actions in this incident, taken together, look less like routine work and more like suspicious hands-on activity.";
 }
 
 function buildTimelineSubject(incidentRecord: RecordShape): string {

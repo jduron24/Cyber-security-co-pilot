@@ -115,6 +115,7 @@ describe("view-model helpers", () => {
     );
 
     expect(model.recommendedAction.label).toBe("Reset credentials");
+    expect(model.incidentLabel).toBe("incident_1");
     expect(model.incidentWindow).toContain("Apr");
     expect(model.timelineSubject).toBe("demo-user@example.com");
     expect(model.plainLanguageWhatHappened).toContain("Sentinel found suspicious activity affecting 203.0.113.10");
@@ -126,6 +127,9 @@ describe("view-model helpers", () => {
     expect(model.coverage[0].status).toBe("Not checked");
     expect(model.coverage[0].note).toContain("network_logs");
     expect(model.recommendationMayBeIncomplete).toBe(true);
+    expect(model.plainLanguageConcernSummary).toContain("signed in interactively through the AWS console");
+    expect(model.plainLanguageConcernSummary).toContain("looked around existing cloud resources");
+    expect(model.plainLanguageConcernSummary).toContain("new resources or access changes followed soon after");
     expect(model.cyberAuditEntries[0].title).toBe("What evidence was available");
     expect(model.cyberAuditEntries[0].detail).toContain("provided the incident evidence");
     expect(model.cyberAuditEntries[1].title).toBe("What the detector found");
@@ -142,5 +146,39 @@ describe("view-model helpers", () => {
     expect(displayLabel("recon_plus_privilege")).toBe("Reconnaissance and privilege change pattern");
     expect(displayLabel("checked_signal_found")).toBe("Checked, signal found");
     expect(displayLabel("temporary_access_lock")).toBe("Temporarily lock access");
+  });
+
+  it("uses the queue label mapping for known demo incidents in the header", () => {
+    const model = buildIncidentViewModel(
+      {
+        incident_id: "incident_000000003",
+        title: "Resource launch with unavailable device context",
+        severity_hint: "medium",
+        entities: { primary_source_ip_address: "192.0.2.88" },
+      },
+      null,
+      null,
+      null,
+      null,
+      null,
+      {
+        incident_summary: {
+          title: "Resource launch with unavailable device context",
+          summary: "Summary",
+          risk_band: "medium",
+          event_sequence: [],
+          top_signals: [],
+        },
+        recommended_action: {},
+        alternative_actions: [],
+        coverage_status_by_category: [],
+        recommendation_may_be_incomplete: false,
+        decision_risk_note: "Risk note",
+      },
+      null,
+      "incident_000000003",
+    );
+
+    expect(model.incidentLabel).toBe("INC-1033");
   });
 });

@@ -77,7 +77,7 @@ export function ActiveIncidentView({
               <span className="card-kicker">A. What happened?</span>
               <StatusPill tone={toneForSeverity(viewModel.severity)}>{viewModel.severity}</StatusPill>
             </div>
-            <p className="issue-number">Issue #{viewModel.incidentId}</p>
+            <p className="issue-number">Issue #{viewModel.incidentLabel}</p>
             <h3>{viewModel.title}</h3>
             <div className="incident-meta-row">
               <span>{viewModel.site}</span>
@@ -172,13 +172,7 @@ export function ActiveIncidentView({
             ) : null}
             <div className="detail-list">
               <strong>Why the system is concerned</strong>
-              <ul>
-                {viewModel.signals.map((signal) => (
-                  <li key={signal.label}>
-                    {signal.label}: {signal.detail}
-                  </li>
-                ))}
-              </ul>
+              <p>{viewModel.plainLanguageConcernSummary}</p>
             </div>
           </article>
 

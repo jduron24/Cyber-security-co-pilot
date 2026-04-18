@@ -6,6 +6,7 @@ import { ActiveIncidentView } from "./ActiveIncidentView";
 const viewModel: IncidentViewModel = {
   title: "Suspicious access activity",
   incidentId: "incident_000000001",
+  incidentLabel: "INC-1042",
   severity: "High",
   site: "203.0.113.10",
   incidentWindow: "Apr 18, 9:15 AM EDT - Apr 18, 9:22 AM EDT",
@@ -16,6 +17,8 @@ const viewModel: IncidentViewModel = {
   recommendationMayBeIncomplete: true,
   incompletenessWarning: "Network branch is missing.",
   decisionRiskNote: "Review network evidence before acting.",
+  plainLanguageConcernSummary:
+    "Someone signed in interactively through the AWS console, the account then looked around existing cloud resources, and new resources or access changes followed soon after. This sequence is concerning because it looks like hands-on activity after access was gained.",
   recommendedAction: {
     actionId: "reset_credentials",
     label: "Reset credentials",
@@ -87,11 +90,13 @@ describe("ActiveIncidentView", () => {
 
     expect(screen.getByText(/recommendation may be incomplete/i)).toBeInTheDocument();
     expect(screen.getByText(/a\. what happened\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/issue #inc-1042/i)).toBeInTheDocument();
     expect(screen.getByText(/timeline for demo-user@example\.com/i)).toBeInTheDocument();
     expect(screen.getByText(/1\. signed in to the aws console/i)).toBeInTheDocument();
     expect(screen.getByText(/b\. what should i do\?/i)).toBeInTheDocument();
     expect(screen.getByText(/c\. what else could i do\?/i)).toBeInTheDocument();
     expect(screen.getByText(/d\. did we check everything\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/looks like hands-on activity after access was gained/i)).toBeInTheDocument();
     expect(screen.getByText(/human decision recorded/i)).toBeInTheDocument();
     expect(screen.getByText(/rationale: contain the account before more changes happen\./i)).toBeInTheDocument();
     expect(screen.queryByText(/^agent$/i)).not.toBeInTheDocument();
