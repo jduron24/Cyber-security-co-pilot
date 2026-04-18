@@ -98,6 +98,32 @@ function toSentenceCase(value: string): string {
     .join(" ");
 }
 
+const signalExplanationMap: Record<string, string> = {
+  recon_activity: "This account was looking around the environment before taking further action.",
+  privilege_change: "Permissions or access levels were changed during this incident.",
+  resource_creation: "New resources or infrastructure were created.",
+  console_login: "Someone signed in through the AWS console.",
+  root_actor: "The AWS root account was involved, which carries extra risk.",
+  assumed_role_actor: "An assumed role was used, which can make activity harder to trace quickly.",
+  high_failure_ratio: "A large share of the activity failed, which can point to misuse or trial-and-error behavior.",
+  failure_burst: "There was a burst of failed activity in a short period.",
+  event_burst: "A high number of actions happened in a short window.",
+  broad_surface_area: "The activity touched many different actions or services.",
+  iam_sequence: "The sequence included IAM activity related to identity and permissions.",
+  sts_sequence: "The sequence included temporary credential or role-assumption activity.",
+  ec2_sequence: "The sequence included EC2 infrastructure activity.",
+  recon_plus_privilege: "The actor first explored the environment, then changed permissions.",
+  recon_plus_resource_creation: "The actor first explored the environment, then created resources.",
+  privilege_plus_resource_creation: "Permissions changed and new resources were created in the same incident.",
+  root_plus_privilege: "The root account was used together with permission-changing activity.",
+};
+
+function explainSignal(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return "Suspicious activity was detected.";
+  return signalExplanationMap[normalized] ?? toSentenceCase(value);
+}
+
 function mapQueueItem(item: RecordShape) {
   const entities = asRecord(item.entities);
   return {
@@ -187,7 +213,7 @@ export default function Home() {
     const recommendedAction = asRecord(decisionSupportResult.recommended_action);
 
     const signals = asArray(incidentSummary.top_signals)
-      .map((item) => asString(asRecord(item).label, "Signal"))
+      .map((item) => explainSignal(asString(asRecord(item).label, "Signal")))
       .filter(Boolean);
 
     const coverageItems = asArray(coverageReviewRecord.coverage_status_by_category).map((item) => {
