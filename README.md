@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/jduron24/Cyber-security-co-pilot/main/logo.png" alt="Cyber Security Co-Pilot Logo" width="260">
+  <img src="**https://raw.githubusercontent.com/jduron24/Cyber-security-co-pilot/main/logo.png**" alt="Cyber Security Co-Pilot Logo" width="260">
 </p>
 
 
