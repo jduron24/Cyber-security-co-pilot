@@ -1,0 +1,13 @@
+allowed_actions:
+  - reset_credentials
+  - temporary_access_lock
+  - continue_monitoring
+  - escalate_to_expert
+  - collect_more_evidence
+high_impact_actions:
+  - reset_credentials
+  - temporary_access_lock
+default_non_expert_safe_action: collect_more_evidence
+escalation_rules:
+  - escalate when completeness is low and high-impact containment would be disruptive
+  - escalate when root activity or privilege change appears with medium or high risk
