@@ -1,16 +1,17 @@
-import { buildAuditEntries, buildIncidentViewModel, mapQueueItem } from "./view-model";
+import { buildAuditEntries, buildIncidentViewModel, displayLabel, mapQueueItem } from "./view-model";
 import type { OperatorHistoryResponse } from "@/types/api";
 
 describe("view-model helpers", () => {
   it("maps queue items from incident payloads", () => {
     const item = mapQueueItem({
       incident_id: "incident_1",
-      title: "Incident title",
+      title: "Unusual login with missing network branch",
       severity_hint: "high",
       entities: { primary_source_ip_address: "198.51.100.10" },
     });
 
     expect(item.id).toBe("incident_1");
+    expect(item.label).toBe("INC-1042");
     expect(item.site).toBe("198.51.100.10");
     expect(item.severity).toBe("High");
   });
@@ -71,7 +72,15 @@ describe("view-model helpers", () => {
     );
 
     expect(model.recommendedAction.label).toBe("Reset credentials");
+    expect(model.signals[0].label).toBe("Privilege change");
+    expect(model.coverage[0].status).toBe("Not checked");
     expect(model.coverage[0].note).toContain("network_logs");
     expect(model.recommendationMayBeIncomplete).toBe(true);
+  });
+
+  it("maps known backend keys to operator-facing labels", () => {
+    expect(displayLabel("recon_plus_privilege")).toBe("Reconnaissance and privilege change pattern");
+    expect(displayLabel("checked_signal_found")).toBe("Checked, signal found");
+    expect(displayLabel("temporary_access_lock")).toBe("Temporarily lock access");
   });
 });

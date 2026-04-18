@@ -2,6 +2,7 @@ import type { OperatorHistoryResponse, RecordShape } from "@/types/api";
 
 export interface QueueItem {
   id: string;
+  label: string;
   site: string;
   severity: string;
   state: string;
@@ -68,6 +69,36 @@ export interface IncidentViewModel {
   auditEntries: AuditEntry[];
 }
 
+const DISPLAY_LABELS: Record<string, string> = {
+  reset_credentials: "Reset credentials",
+  temporary_access_lock: "Temporarily lock access",
+  collect_more_evidence: "Collect more evidence",
+  escalate_to_expert: "Escalate to expert",
+  checked_signal_found: "Checked, signal found",
+  checked_no_signal: "Checked, no signal",
+  not_checked: "Not checked",
+  unavailable: "Could not check",
+  no_signal: "No signal found",
+  recon_activity: "Reconnaissance activity",
+  privilege_change: "Privilege change",
+  console_login: "Console login",
+  assumed_role_actor: "Assumed role actor",
+  iam_sequence: "IAM activity sequence",
+  sts_sequence: "STS activity sequence",
+  recon_plus_privilege: "Reconnaissance and privilege change pattern",
+  compromised_identity: "Compromised identity",
+  misconfigured_automation: "Misconfigured automation",
+  login: "Login",
+  identity: "Identity",
+  network: "Network",
+};
+
+const INCIDENT_QUEUE_LABELS: Record<string, string> = {
+  "Unusual login with missing network branch": "INC-1042",
+  "Complete high-confidence credential misuse case": "INC-1038",
+  "Resource launch with unavailable device context": "INC-1033",
+};
+
 export function asRecord(value: unknown): RecordShape {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as RecordShape) : {};
 }
@@ -98,6 +129,12 @@ export function toSentenceCase(value: string): string {
     .split(/[_-]/g)
     .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
     .join(" ");
+}
+
+export function displayLabel(value: unknown, fallback = "Unavailable"): string {
+  const raw = asOptionalString(value);
+  if (!raw) return fallback;
+  return DISPLAY_LABELS[raw] ?? toSentenceCase(raw);
 }
 
 export function toneForSeverity(value: string): "critical" | "warning" | "safe" | "neutral" {
@@ -131,8 +168,10 @@ export function summarizeCoverageNote(row: RecordShape): string {
 
 export function mapQueueItem(item: RecordShape): QueueItem {
   const entities = asRecord(item.entities);
+  const title = asString(item.title, "Incident");
   return {
     id: asString(item.incident_id, "incident"),
+    label: INCIDENT_QUEUE_LABELS[title] ?? asString(item.incident_id, "incident"),
     site: asString(entities.primary_source_ip_address ?? item.title, "Unknown site"),
     severity: toSentenceCase(asString(item.severity_hint, "unknown")),
     state: "Needs review",
@@ -199,21 +238,21 @@ export function buildIncidentViewModel(
     },
     alternatives: alternativeActions.map((item) => ({
       actionId: asString(item.action_id, "alternative"),
-      label: asString(item.label ?? item.action_id, "Alternative"),
+      label: displayLabel(item.label ?? item.action_id, "Alternative"),
       reason: asString(item.reason, "No reason available."),
       tradeoff: asString(item.tradeoff, "No tradeoff available."),
     })),
     signals: topSignals.map((item) => ({
-      label: asString(item.label ?? item.feature, "Signal"),
-      detail: asString(item.detail ?? item.label ?? item.feature, "Suspicious activity detected."),
+      label: displayLabel(item.label ?? item.feature, "Signal"),
+      detail: asString(item.detail, displayLabel(item.label ?? item.feature, "Suspicious activity detected.")),
     })),
     timeline: eventSequence.slice(0, 6).map((item, index) => ({
       step: `Step ${index + 1}`,
       title: asString(item, "Activity"),
     })),
     coverage: coverageItems.map((item) => ({
-      category: toSentenceCase(asString(item.category, "coverage")),
-      status: toSentenceCase(asString(item.status, "unknown")),
+      category: displayLabel(item.category, "Coverage"),
+      status: displayLabel(item.status, "Unknown"),
       rawStatus: asString(item.status, "unknown"),
       note: summarizeCoverageNote(item),
     })),
@@ -223,7 +262,7 @@ export function buildIncidentViewModel(
       ? {
           title: toSentenceCase(asString(latestDecision.decision_type, "decision recorded")),
           detail: asString(
-            latestDecision.chosen_action_label ?? latestDecision.chosen_action_id,
+            displayLabel(latestDecision.chosen_action_label ?? latestDecision.chosen_action_id, "Action recorded"),
             "Action recorded",
           ),
         }

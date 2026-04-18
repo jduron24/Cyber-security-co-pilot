@@ -27,7 +27,7 @@ export function QueuePanel({
             type="button"
           >
             <div>
-              <strong>{item.id}</strong>
+              <strong>{item.label}</strong>
               <p>{item.site}</p>
             </div>
             <div className="queue-meta">

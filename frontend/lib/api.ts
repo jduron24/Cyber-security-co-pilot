@@ -11,8 +11,16 @@ import type {
   RecordShape,
 } from "@/types/api";
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000").replace(/\/$/, "");
-const AGENT_BASE_URL = (process.env.NEXT_PUBLIC_AGENT_API_BASE_URL ?? "http://127.0.0.1:8001").replace(/\/$/, "");
+function normalizeBaseUrl(value: string | undefined, fallback: string): string {
+  return (value ?? fallback).trim().replace(/\s+/g, "").replace(/\/$/, "");
+}
+
+const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://127.0.0.1:8000");
+const AGENT_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_AGENT_API_BASE_URL, "http://127.0.0.1:8001");
+
+function logApi(event: string, payload?: unknown): void {
+  console.info(`[frontend/api] ${event}`, payload ?? "");
+}
 
 export class ApiError extends Error {
   status?: number;
@@ -25,7 +33,14 @@ export class ApiError extends Error {
 }
 
 async function fetchJson<T>(baseUrl: string, path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${baseUrl}${path}`, {
+  const url = `${baseUrl}${path}`;
+  logApi("request", {
+    url,
+    method: init?.method ?? "GET",
+    hasBody: Boolean(init?.body),
+  });
+
+  const response = await fetch(url, {
     headers: {
       Accept: "application/json",
       "Content-Type": "application/json",
@@ -35,20 +50,32 @@ async function fetchJson<T>(baseUrl: string, path: string, init?: RequestInit): 
     ...init,
   });
 
+  logApi("response", {
+    url,
+    method: init?.method ?? "GET",
+    status: response.status,
+    ok: response.ok,
+    redirected: response.redirected,
+  });
+
   if (!response.ok) {
     let detail = response.statusText;
     try {
       const payload = (await response.json()) as { detail?: string };
       detail = payload.detail ?? detail;
+      logApi("response_error_payload", { url, payload });
     } catch {}
+    console.error("[frontend/api] request_failed", { url, status: response.status, detail });
     throw new ApiError(detail || "Request failed", response.status);
   }
 
-  return (await response.json()) as T;
+  const payload = (await response.json()) as T;
+  logApi("response_payload", { url, payload });
+  return payload;
 }
 
 export async function listIncidents(limit = 25): Promise<RecordShape[]> {
-  const response = await fetchJson<IncidentListResponse>(API_BASE_URL, `/incidents?limit=${limit}`);
+  const response = await fetchJson<IncidentListResponse>(API_BASE_URL, `/incidents/?limit=${limit}`);
   return response.incidents;
 }
 

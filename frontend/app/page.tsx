@@ -10,10 +10,14 @@ import { buildIncidentViewModel, mapQueueItem } from "@/lib/view-model";
 import type { OperatorHistoryResponse, RecordShape } from "@/types/api";
 
 const fallbackQueue = [
-  { id: "INC-1042", site: "Water Plant East", severity: "High", state: "Needs review" },
-  { id: "INC-1038", site: "County Records", severity: "Medium", state: "Monitoring" },
-  { id: "INC-1033", site: "City Hospital Annex", severity: "Low", state: "Closed" },
+  { id: "INC-1042", label: "INC-1042", site: "Water Plant East", severity: "High", state: "Needs review" },
+  { id: "INC-1038", label: "INC-1038", site: "County Records", severity: "Medium", state: "Monitoring" },
+  { id: "INC-1033", label: "INC-1033", site: "City Hospital Annex", severity: "Low", state: "Closed" },
 ];
+
+function logPage(event: string, payload?: unknown): void {
+  console.info(`[frontend/page] ${event}`, payload ?? "");
+}
 
 export default function Home() {
   const [selectedView, setSelectedView] = useState<"active" | "audit">("active");
@@ -37,7 +41,15 @@ export default function Home() {
   const [agentError, setAgentError] = useState<string | null>(null);
 
   async function refreshWorkspace(incidentId: string) {
+    logPage("refresh_workspace_start", { incidentId });
     const result = await loadIncidentWorkspace(incidentId);
+    logPage("refresh_workspace_success", {
+      incidentId,
+      hasIncident: Boolean(result.incident),
+      hasDecisionSupport: Boolean(result.decisionSupport),
+      hasCoverageReview: Boolean(result.coverageReview),
+      hasOperatorHistory: Boolean(result.operatorHistory),
+    });
     setIncident(result.incident);
     setDecisionSupport(result.decisionSupport);
     setCoverageReview(result.coverageReview);
@@ -49,14 +61,18 @@ export default function Home() {
 
     async function loadQueue() {
       try {
+        logPage("load_queue_start");
         const result = await listIncidents();
+        logPage("load_queue_result", { count: result.length, incidents: result });
         if (cancelled || result.length === 0) return;
         const mapped = result.map(mapQueueItem);
+        logPage("load_queue_mapped", mapped);
         setQueue(mapped);
         setSelectedIncidentId(mapped[0].id);
         setQueueError(null);
       } catch (error) {
         if (cancelled) return;
+        console.error("[frontend/page] load_queue_failed", error);
         setQueueError(error instanceof ApiError ? error.message : "Could not load incidents.");
       }
     }
@@ -72,6 +88,7 @@ export default function Home() {
 
     async function loadDetails() {
       if (!selectedIncidentId.startsWith("incident_")) {
+        logPage("skip_load_details_for_fallback_incident", { selectedIncidentId });
         return;
       }
       setIncidentLoading(true);
@@ -79,10 +96,12 @@ export default function Home() {
       setActionMessage(null);
       setAgentAnswer(null);
       try {
+        logPage("load_details_start", { selectedIncidentId });
         await refreshWorkspace(selectedIncidentId);
         if (cancelled) return;
       } catch (error) {
         if (cancelled) return;
+        console.error("[frontend/page] load_details_failed", { selectedIncidentId, error });
         setIncidentError(error instanceof ApiError ? error.message : "Could not load incident details.");
         setIncident(null);
         setDecisionSupport(null);
@@ -98,12 +117,15 @@ export default function Home() {
     async function loadAgentAuthState() {
       if (!selectedIncidentId.startsWith("incident_")) return;
       try {
+        logPage("load_agent_auth_start", { selectedIncidentId });
         const result = await getAgentAuth(selectedIncidentId);
         if (!cancelled) {
+          logPage("load_agent_auth_success", result);
           setAgentAuth(result);
         }
       } catch (error) {
         if (!cancelled) {
+          console.error("[frontend/page] load_agent_auth_failed", { selectedIncidentId, error });
           setAgentAuth(null);
           setAgentError(error instanceof ApiError ? error.message : "Could not load agent status.");
         }
@@ -128,6 +150,7 @@ export default function Home() {
     setActionMessage(null);
     setIncidentError(null);
     try {
+      logPage("run_action_start", { action, selectedIncidentId, selectedAlternativeId, rationale });
       let result: RecordShape;
       if (action === "approve") {
         result = await postApprove(selectedIncidentId, { rationale, used_double_check: false });
@@ -153,9 +176,11 @@ export default function Home() {
         (typeof chosenAction.action_id === "string" && chosenAction.action_id) ||
         (action === "double-check" ? "Double check recorded" : "Action recorded");
       const decisionType = typeof result.decision_type === "string" ? result.decision_type : "decision recorded";
+      logPage("run_action_success", { action, result });
       setActionMessage(`${decisionType.replace(/_/g, " ")}: ${chosenLabel}`);
       await refreshWorkspace(selectedIncidentId);
     } catch (error) {
+      console.error("[frontend/page] run_action_failed", { action, selectedIncidentId, error });
       setIncidentError(error instanceof ApiError ? error.message : "Could not record operator action.");
     } finally {
       setActionLoading(false);
@@ -167,9 +192,12 @@ export default function Home() {
     setAgentLoading(true);
     setAgentError(null);
     try {
+      logPage("run_agent_query_start", { selectedIncidentId, agentQuestion });
       const result = await postAgentQuery(selectedIncidentId, { user_query: agentQuestion.trim() });
+      logPage("run_agent_query_success", result);
       setAgentAnswer(result);
     } catch (error) {
+      console.error("[frontend/page] run_agent_query_failed", { selectedIncidentId, error });
       setAgentError(error instanceof ApiError ? error.message : "Could not query agent.");
     } finally {
       setAgentLoading(false);
