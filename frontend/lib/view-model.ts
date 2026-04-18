@@ -5,6 +5,7 @@ export interface QueueItem {
   label: string;
   site: string;
   severity: string;
+  timestamp: string | null;
   state: string;
 }
 
@@ -64,6 +65,9 @@ export interface IncidentViewModel {
   incidentId: string;
   severity: string;
   site: string;
+  incidentWindow: string | null;
+  timelineSubject: string;
+  plainLanguageWhatHappened: string;
   summary: string;
   confidence: number;
   recommendationMayBeIncomplete: boolean;
@@ -217,6 +221,7 @@ export function mapQueueItem(item: RecordShape): QueueItem {
     label: INCIDENT_QUEUE_LABELS[title] ?? asString(item.incident_id, "incident"),
     site: asString(entities.primary_source_ip_address ?? item.title, "Unknown site"),
     severity: toSentenceCase(asString(item.severity_hint, "unknown")),
+    timestamp: formatIncidentWindow(item.start_time, item.end_time),
     state: "Needs review",
   };
 }
@@ -261,11 +266,11 @@ export function buildCyberAuditEntries(
   if (Object.keys(evidence).length) {
     const provenance = asRecord(evidence.provenance_json);
     const rawRefs = asRecord(evidence.raw_refs_json);
-    const categories = asArray<string>(rawRefs.coverage_categories).map((item) => displayLabel(item, item)).join(", ");
+    const categories = asArray<string>(rawRefs.coverage_categories).map((item) => displayLabel(item, item));
     entries.push({
-      title: "Evidence package loaded",
-      detail: `${asString(provenance.source, "system")} supplied the evidence package${categories ? ` across ${categories}` : ""}.`,
-      source: "Evidence package",
+      title: "What evidence was available",
+      detail: `${toSentenceStart(asString(provenance.source, "system"))} provided the incident evidence${categories.length ? ` across ${joinHumanList(categories)}` : ""}.`,
+      source: "Available evidence",
     });
   }
 
@@ -273,29 +278,29 @@ export function buildCyberAuditEntries(
     const labels = asArray<string>(detector.detector_labels_json).slice(0, 3).map((item) => displayLabel(item, item));
     const sources = asArray<string>(detector.data_sources_used_json).join(", ");
     entries.push({
-      title: `Detector scored ${asString(detector.risk_band, "unknown")} risk`,
-      detail: `${labels.length ? `Top detector labels: ${labels.join(", ")}.` : "Detector output available."}${sources ? ` Data sources: ${sources}.` : ""}`,
-      source: "Detector",
+      title: `What the detector found`,
+      detail: `${labels.length ? `The strongest signals were ${joinHumanList(labels)}.` : "The detector found suspicious activity."}${sources ? ` It relied on ${humanizeSourceList(sources)}.` : ""}`,
+      source: "Detector finding",
     });
     const contributions = asArray<RecordShape>(detector.feature_contributions_json).slice(0, 3);
     if (contributions.length) {
       entries.push({
-        title: `Model explanation from ${asString(detector.model_type, "detector model").toUpperCase()}`,
+        title: `Why the model leaned suspicious`,
         detail: contributions
           .map((item) => asString(item.plain_language, `${displayLabel(item.feature, "Signal")} ${asString(item.direction, "affected the score")}.`))
           .join(" "),
-        source: "Detector explanation",
+        source: `${asString(detector.model_type, "detector model").toUpperCase()} model`,
       });
     }
   }
 
   if (Object.keys(coverage).length) {
-    const checks = asArray<RecordShape>(coverage.checks_json).map((item) => `${displayLabel(item.name, "Check")}: ${displayLabel(item.status, "Unknown")}`);
+    const checks = asArray<RecordShape>(coverage.checks_json).map((item) => `${displayLabel(item.name, "Check")} was ${displayLabel(item.status, "Unknown").toLowerCase()}`);
     const missing = asArray<string>(coverage.missing_sources_json);
     entries.push({
-      title: `Coverage assessed ${asString(coverage.completeness_level, "unknown")} completeness`,
-      detail: `${checks.length ? `Checks: ${checks.join("; ")}.` : ""}${missing.length ? ` Missing sources: ${missing.join(", ")}.` : ""}`.trim(),
-      source: "Coverage",
+      title: `What was checked and what was missing`,
+      detail: `${checks.length ? `${toSentenceStart(joinHumanList(checks))}.` : ""}${missing.length ? ` Missing sources: ${joinHumanList(missing.map((item) => displayLabel(item, item)))}.` : ""}`.trim(),
+      source: "Coverage review",
     });
   }
 
@@ -305,8 +310,8 @@ export function buildCyberAuditEntries(
       .slice(0, 3)
       .map((item) => displayLabel(item.label ?? item.action_id, "Alternative"));
     entries.push({
-      title: `Decision support recommended ${displayLabel(recommended.label ?? recommended.action_id, "an action")}`,
-      detail: `${asString(recommended.reason, "No recommendation reason recorded.")}${alternatives.length ? ` Alternatives considered: ${alternatives.join(", ")}.` : ""}`,
+      title: `What the system recommended`,
+      detail: `${displayLabel(recommended.label ?? recommended.action_id, "An action")} was recommended because ${lowercaseFirst(asString(recommended.reason, "no recommendation reason was recorded."))}${alternatives.length ? ` Other options considered were ${joinHumanList(alternatives)}.` : ""}`,
       source: "Decision support",
     });
   }
@@ -315,9 +320,9 @@ export function buildCyberAuditEntries(
     const decisionChanges = asArray<string>(review.what_could_change_the_decision);
     const candidates = asArray<string>(asRecord(review.double_check).candidates);
     entries.push({
-      title: "Coverage review framed decision risk",
-      detail: `${asString(review.decision_risk_note, "Coverage review available.")}${decisionChanges.length ? ` Decision changers: ${decisionChanges.slice(0, 2).join(" ")}` : ""}${candidates.length ? ` Double-check candidates: ${candidates.join(", ")}.` : ""}`,
-      source: "Coverage review",
+      title: "Why the recommendation may still change",
+      detail: `${asString(review.decision_risk_note, "Coverage review is available.")}${decisionChanges.length ? ` The decision could change if ${joinHumanList(decisionChanges.slice(0, 2).map((item) => lowercaseFirst(item)))}.` : ""}${candidates.length ? ` The next best review steps are ${joinHumanList(candidates.map((item) => lowercaseFirst(item)))}.` : ""}`,
+      source: "Decision risk",
     });
   }
 
@@ -363,6 +368,14 @@ export function buildIncidentViewModel(
     incidentId: asString(incidentRecord.incident_id, selectedIncidentId),
     severity: toSentenceCase(asString(incidentSummary.risk_band ?? incidentRecord.severity_hint, "high")),
     site: asString(asRecord(incidentRecord.entities).primary_source_ip_address ?? incidentRecord.title, "Unknown site"),
+    incidentWindow: formatIncidentWindow(incidentRecord.start_time, incidentRecord.end_time),
+    timelineSubject: buildTimelineSubject(incidentRecord),
+    plainLanguageWhatHappened: buildPlainLanguageWhatHappened(
+      asString(incidentSummary.title ?? incidentRecord.title, "Suspicious access activity"),
+      asString(incidentSummary.summary ?? incidentRecord.summary, "Incident summary unavailable."),
+      topSignals.map((item) => displayLabel(item.label ?? item.feature, "Signal")),
+      asString(asRecord(incidentRecord.entities).primary_source_ip_address ?? incidentRecord.title, "Unknown site"),
+    ),
     summary: asString(incidentSummary.summary ?? incidentRecord.summary, "Incident summary unavailable."),
     confidence,
     recommendationMayBeIncomplete: asBoolean(coverageReviewRecord.recommendation_may_be_incomplete),
@@ -388,8 +401,8 @@ export function buildIncidentViewModel(
     modelType: asOptionalString(detectorRecord.model_type),
     modelContributions,
     timeline: eventSequence.slice(0, 6).map((item, index) => ({
-      step: `Step ${index + 1}`,
-      title: asString(item, "Activity"),
+      step: `${index + 1}`,
+      title: humanizeTimelineEvent(asString(item, "Activity")),
     })),
     coverage: coverageItems.map((item) => ({
       category: displayLabel(item.category, "Coverage"),
@@ -437,4 +450,120 @@ function deriveConfidencePercent(
 
   const rawPercent = Number.isFinite(modelConfidence) ? Math.round(modelConfidence * 100) : Math.round(fallbackRiskScore * 100);
   return Math.max(55, Math.min(rawPercent, cap));
+}
+
+export function formatIncidentWindow(startTime: unknown, endTime: unknown): string | null {
+  const start = formatTimestamp(startTime);
+  const end = formatTimestamp(endTime);
+  if (start && end) {
+    return `${start} - ${end}`;
+  }
+  return start ?? end;
+}
+
+export function formatTimestamp(value: unknown): string | null {
+  const raw = asOptionalString(value);
+  if (!raw) return null;
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(date);
+}
+
+function joinHumanList(items: string[]): string {
+  const cleaned = items.map((item) => item.trim()).filter(Boolean);
+  if (cleaned.length === 0) return "";
+  if (cleaned.length === 1) return cleaned[0];
+  if (cleaned.length === 2) return `${cleaned[0]} and ${cleaned[1]}`;
+  return `${cleaned.slice(0, -1).join(", ")}, and ${cleaned[cleaned.length - 1]}`;
+}
+
+function toSentenceStart(value: string): string {
+  if (!value) return value;
+  return value[0].toUpperCase() + value.slice(1);
+}
+
+function lowercaseFirst(value: string): string {
+  if (!value) return value;
+  return value[0].toLowerCase() + value.slice(1);
+}
+
+function humanizeSourceList(value: string): string {
+  return joinHumanList(value.split(",").map((item) => displayLabel(item.trim(), item.trim())));
+}
+
+function buildPlainLanguageWhatHappened(
+  title: string,
+  summary: string,
+  signals: string[],
+  site: string,
+): string {
+  const normalizedTitle = title.toLowerCase();
+  if (normalizedTitle.includes("unusual login")) {
+    return "Someone appears to have signed in and then performed suspicious account activity. The current review suggests possible credential misuse, but some evidence is still missing.";
+  }
+  if (normalizedTitle.includes("credential misuse")) {
+    return "The activity looks like a strong case of account misuse. The pattern is consistent enough that the system is treating it as a high-confidence security incident.";
+  }
+  if (normalizedTitle.includes("resource launch")) {
+    return "Someone created or changed resources after signing in, which can indicate risky hands-on activity. Some surrounding device context is unavailable, so the picture is not complete.";
+  }
+
+  const signalSummary = signals.length ? ` The main reasons are ${joinHumanList(signals.slice(0, 3).map((item) => item.toLowerCase()))}.` : "";
+  const cleanedSummary = summary && summary !== "Incident summary unavailable." ? ` ${toSentenceStart(summary)}` : "";
+  return `Sentinel found suspicious activity affecting ${site}.${signalSummary}${cleanedSummary}`;
+}
+
+function buildTimelineSubject(incidentRecord: RecordShape): string {
+  const primaryActor = asRecord(incidentRecord.primary_actor);
+  const actorKey = asOptionalString(primaryActor.actor_key);
+  if (actorKey) {
+    return actorKey;
+  }
+
+  const entities = asRecord(incidentRecord.entities);
+  const sourceIp = asOptionalString(entities.primary_source_ip_address);
+  if (sourceIp) {
+    return `the activity from ${sourceIp}`;
+  }
+
+  return "this incident";
+}
+
+function humanizeTimelineEvent(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  const directMap: Record<string, string> = {
+    consolelogin: "Signed in to the AWS console",
+    describeinstances: "Looked up existing virtual machines",
+    runinstances: "Launched a new virtual machine",
+    getcalleridentity: "Checked which account or role was active",
+    assumrole: "Switched into a temporary role",
+    creteaccesskey: "Created a new access key",
+    createaccesskey: "Created a new access key",
+    attachuserpolicy: "Attached a new permission policy to a user",
+    putuserpolicy: "Changed a user's permissions",
+    putrolepolicy: "Changed a role's permissions",
+    createuser: "Created a new user account",
+    createpolicy: "Created a new permission policy",
+    listbuckets: "Viewed the list of storage buckets",
+    getbucketpolicy: "Viewed a storage bucket policy",
+    describenetworkinterfaces: "Looked up network interface details",
+    startinstances: "Started an existing virtual machine",
+    stopinstances: "Stopped a virtual machine",
+    terminateinstances: "Terminated a virtual machine",
+    createinstanceprofile: "Created a new instance profile",
+    addroletoinstanceprofile: "Attached a role to an instance profile",
+  };
+
+  if (directMap[normalized]) {
+    return directMap[normalized];
+  }
+
+  const spaced = value.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ").trim();
+  return toSentenceStart(spaced);
 }

@@ -139,6 +139,20 @@ button:hover {
   line-height: 1;
 }
 
+.brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
 .brand-block p:last-child,
 .queue-item p,
 .queue-meta small,
@@ -268,15 +282,23 @@ button:hover {
   margin-top: 4px;
 }
 
-.queue-meta {
-  text-align: right;
+.queue-primary {
+  display: grid;
+  gap: 4px;
 }
 
-.queue-meta span {
-  display: block;
+.queue-timestamp {
+  color: var(--muted);
   font-family: var(--font-ibm-plex-mono), monospace;
-  font-size: 0.76rem;
-  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.queue-meta {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+  text-align: right;
 }
 
 .topbar h2 {
@@ -364,6 +386,15 @@ button:hover {
   text-transform: uppercase;
 }
 
+.status-pill::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
 .status-pill--critical {
   background: rgba(212, 91, 70, 0.12);
   border-color: rgba(212, 91, 70, 0.18);
@@ -439,7 +470,6 @@ button:hover {
 }
 
 .dashboard-grid--app > .card--coverage,
-.dashboard-grid--app > .card--model-explanation,
 .dashboard-grid--app > .card--raw-logs,
 .dashboard-grid--app > .card--alternatives,
 .dashboard-grid--app > .card--human-decision {
@@ -458,6 +488,18 @@ button:hover {
 
 .card--confidence .metric-value {
   font-size: 1.32rem;
+}
+
+.incident-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 10px 0 4px;
+  color: var(--muted);
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 0.76rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .card--confidence .card-heading {
@@ -698,6 +740,16 @@ button:hover {
   margin-top: 18px;
 }
 
+.timeline-block {
+  margin-top: 18px;
+}
+
+.timeline-label {
+  display: block;
+  color: #173045;
+  font-size: 0.92rem;
+}
+
 .timeline-chip {
   display: inline-flex;
   align-items: center;
@@ -816,6 +868,12 @@ textarea.text-input {
 
 .detail-list--compact {
   margin-top: 8px;
+}
+
+.detail-list--section {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(18, 32, 51, 0.1);
 }
 
 .detail-list ul {
@@ -1011,7 +1069,6 @@ textarea.text-input {
   .dashboard-grid--app > .card:nth-child(1),
   .dashboard-grid--app > .card--confidence,
   .dashboard-grid--app > .card--coverage,
-  .dashboard-grid--app > .card--model-explanation,
   .dashboard-grid--app > .card--alternatives,
   .dashboard-grid--app > .card--human-decision {
     grid-column: 1 / -1;

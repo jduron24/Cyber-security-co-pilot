@@ -8,6 +8,9 @@ const viewModel: IncidentViewModel = {
   incidentId: "incident_000000001",
   severity: "High",
   site: "203.0.113.10",
+  incidentWindow: "Apr 18, 9:15 AM EDT - Apr 18, 9:22 AM EDT",
+  timelineSubject: "demo-user@example.com",
+  plainLanguageWhatHappened: "Someone appears to have signed in and then performed suspicious account activity.",
   summary: "Summary",
   confidence: 92,
   recommendationMayBeIncomplete: true,
@@ -37,7 +40,7 @@ const viewModel: IncidentViewModel = {
       plainLanguage: "A high failure ratio increased suspicion.",
     },
   ],
-  timeline: [{ step: "Step 1", title: "ConsoleLogin" }],
+  timeline: [{ step: "1", title: "Signed in to the AWS console" }],
   coverage: [{ category: "Network", status: "Not Checked", rawStatus: "not_checked", note: "Missing: network_logs" }],
   whatCouldChange: ["If network_logs shows more activity, the recommendation may change."],
   doubleCheckCandidates: ["Review network logs"],
@@ -84,6 +87,8 @@ describe("ActiveIncidentView", () => {
 
     expect(screen.getByText(/recommendation may be incomplete/i)).toBeInTheDocument();
     expect(screen.getByText(/a\. what happened\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/timeline for demo-user@example\.com/i)).toBeInTheDocument();
+    expect(screen.getByText(/1\. signed in to the aws console/i)).toBeInTheDocument();
     expect(screen.getByText(/b\. what should i do\?/i)).toBeInTheDocument();
     expect(screen.getByText(/c\. what else could i do\?/i)).toBeInTheDocument();
     expect(screen.getByText(/d\. did we check everything\?/i)).toBeInTheDocument();
@@ -131,10 +136,11 @@ describe("ActiveIncidentView", () => {
       />,
     );
 
-    expect(screen.getByText(/why sentinel is concerned/i)).toBeInTheDocument();
-    expect(screen.getByText(/why the model flagged this/i)).toBeInTheDocument();
+    expect(screen.getByText(/why this incident was flagged/i)).toBeInTheDocument();
+    expect(screen.getByText(/model evidence/i)).toBeInTheDocument();
     expect(screen.getByText(/a high failure ratio increased suspicion\./i)).toBeInTheDocument();
     expect(screen.getByText(/raw logs for expert review/i)).toBeInTheDocument();
+    expect(screen.getByText(/timeline for demo-user@example\.com/i)).toBeInTheDocument();
     expect(screen.getByText(/signin\.amazonaws\.com/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /explain privilege change/i }));
     expect(screen.getByText(/permissions or access levels changed/i)).toBeInTheDocument();

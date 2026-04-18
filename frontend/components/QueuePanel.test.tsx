@@ -9,8 +9,8 @@ describe("QueuePanel", () => {
     render(
       <QueuePanel
         queue={[
-          { id: "incident_1", label: "INC-1042", site: "site-a", severity: "High", state: "Needs review" },
-          { id: "incident_2", label: "INC-1038", site: "site-b", severity: "Low", state: "Closed" },
+          { id: "incident_1", label: "INC-1042", site: "site-a", severity: "High", timestamp: "Apr 18, 1:15 PM EDT", state: "Needs review" },
+          { id: "incident_2", label: "INC-1038", site: "site-b", severity: "Low", timestamp: null, state: "Closed" },
         ]}
         selectedIncidentId="incident_1"
         queueError={null}

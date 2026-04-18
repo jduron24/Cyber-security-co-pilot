@@ -73,17 +73,24 @@ export function ActiveIncidentView({
           <article className="card simple-card">
             <div className="card-heading">
               <span className="card-kicker">A. What happened?</span>
-              <StatusPill tone="critical">Incident</StatusPill>
+              <StatusPill tone={toneForSeverity(viewModel.severity)}>{viewModel.severity}</StatusPill>
             </div>
             <p className="issue-number">Issue #{viewModel.incidentId}</p>
             <h3>{viewModel.title}</h3>
-            <p>{viewModel.summary}</p>
+            <div className="incident-meta-row">
+              <span>{viewModel.site}</span>
+              {viewModel.incidentWindow ? <span>{viewModel.incidentWindow}</span> : null}
+            </div>
+            <p>{viewModel.plainLanguageWhatHappened}</p>
+            <div className="timeline-block">
+              <strong className="timeline-label">Timeline for {viewModel.timelineSubject}</strong>
             <div className="timeline-inline">
               {viewModel.timeline.map((item) => (
                 <span className="timeline-chip" key={item.step + item.title}>
-                  {item.step}: {item.title}
+                  {item.step}. {item.title}
                 </span>
               ))}
+            </div>
             </div>
           </article>
 
@@ -223,16 +230,23 @@ export function ActiveIncidentView({
         <article className="card card--hero-main">
           <div className="card-heading">
             <span className="card-kicker">Incident summary</span>
-            <StatusPill tone="critical">What happened</StatusPill>
+            <StatusPill tone={toneForSeverity(viewModel.severity)}>{viewModel.severity}</StatusPill>
           </div>
           <h3>{viewModel.title}</h3>
-          <p>{viewModel.summary}</p>
+          <div className="incident-meta-row">
+            <span>{viewModel.site}</span>
+            {viewModel.incidentWindow ? <span>{viewModel.incidentWindow}</span> : null}
+          </div>
+          <p>{viewModel.plainLanguageWhatHappened}</p>
+          <div className="timeline-block">
+            <strong className="timeline-label">Timeline for {viewModel.timelineSubject}</strong>
           <div className="timeline-inline">
             {viewModel.timeline.map((item) => (
               <span className="timeline-chip" key={item.step + item.title}>
-                {item.step}: {item.title}
+                {item.step}. {item.title}
               </span>
             ))}
+          </div>
           </div>
         </article>
 
@@ -253,7 +267,7 @@ export function ActiveIncidentView({
         {isExpert ? (
           <article className="card card--primary reveal reveal-delay-2">
             <div className="card-heading">
-              <span className="card-kicker">Why Sentinel is concerned</span>
+              <span className="card-kicker">Why this incident was flagged</span>
               <StatusPill tone="warning">{viewModel.signals.length} signals</StatusPill>
             </div>
             <ul className="signal-list">
@@ -276,6 +290,20 @@ export function ActiveIncidentView({
                 </li>
               ))}
             </ul>
+            <div className="detail-list detail-list--compact detail-list--section">
+              <strong>Model evidence</strong>
+              {viewModel.modelContributions.length ? (
+                <ul>
+                  {viewModel.modelContributions.map((item) => (
+                    <li key={`${item.feature}-${item.direction}`}>
+                      <strong>{item.feature}</strong>: {item.plainLanguage}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted">No model-specific explanation was recorded for this detector result.</p>
+              )}
+            </div>
           </article>
         ) : null}
 
@@ -326,26 +354,6 @@ export function ActiveIncidentView({
               </ul>
             </div>
           ) : null}
-        </article>
-
-        <article className="card card--model-explanation reveal reveal-delay-3">
-          <div className="card-heading">
-            <span className="card-kicker">Why the model flagged this</span>
-            <StatusPill tone="neutral">{viewModel.modelType ? viewModel.modelType.toUpperCase() : "Model"}</StatusPill>
-          </div>
-          {viewModel.modelContributions.length ? (
-            <div className="detail-list detail-list--compact">
-              <ul>
-                {viewModel.modelContributions.map((item) => (
-                  <li key={`${item.feature}-${item.direction}`}>
-                    <strong>{item.feature}</strong>: {item.plainLanguage}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="muted">No model-specific explanation was recorded for this detector result.</p>
-          )}
         </article>
 
         <article className="card card--raw-logs reveal reveal-delay-3">

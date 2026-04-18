@@ -7,6 +7,7 @@ describe("view-model helpers", () => {
       incident_id: "incident_1",
       title: "Unusual login with missing network branch",
       severity_hint: "high",
+      start_time: "2026-04-18T13:15:00Z",
       entities: { primary_source_ip_address: "198.51.100.10" },
     });
 
@@ -14,6 +15,7 @@ describe("view-model helpers", () => {
     expect(item.label).toBe("INC-1042");
     expect(item.site).toBe("198.51.100.10");
     expect(item.severity).toBe("High");
+    expect(item.timestamp).toContain("Apr");
   });
 
   it("builds audit entries from operator history", () => {
@@ -43,6 +45,9 @@ describe("view-model helpers", () => {
         incident_id: "incident_1",
         title: "Incident title",
         severity_hint: "high",
+        start_time: "2026-04-18T13:15:00Z",
+        end_time: "2026-04-18T13:22:00Z",
+        primary_actor: { actor_key: "demo-user@example.com" },
         entities: { primary_source_ip_address: "203.0.113.10" },
       },
       {
@@ -79,7 +84,7 @@ describe("view-model helpers", () => {
           summary: "Summary",
           risk_score: 0.88,
           risk_band: "high",
-          event_sequence: ["ConsoleLogin"],
+          event_sequence: ["ConsoleLogin", "DescribeInstances", "RunInstances"],
           top_signals: [{ label: "privilege_change" }],
         },
         recommended_action: {
@@ -110,14 +115,22 @@ describe("view-model helpers", () => {
     );
 
     expect(model.recommendedAction.label).toBe("Reset credentials");
+    expect(model.incidentWindow).toContain("Apr");
+    expect(model.timelineSubject).toBe("demo-user@example.com");
+    expect(model.plainLanguageWhatHappened).toContain("Sentinel found suspicious activity affecting 203.0.113.10");
+    expect(model.timeline[0].title).toBe("Signed in to the AWS console");
+    expect(model.timeline[1].title).toBe("Looked up existing virtual machines");
+    expect(model.timeline[2].title).toBe("Launched a new virtual machine");
     expect(model.signals[0].label).toBe("Privilege change");
     expect(model.signals[0].explanation).toContain("permissions or access levels changed");
     expect(model.coverage[0].status).toBe("Not checked");
     expect(model.coverage[0].note).toContain("network_logs");
     expect(model.recommendationMayBeIncomplete).toBe(true);
-    expect(model.cyberAuditEntries[0].title).toContain("Evidence package");
-    expect(model.cyberAuditEntries[1].title).toContain("Detector scored high risk");
-    expect(model.cyberAuditEntries[2].title).toContain("Model explanation from EBM");
+    expect(model.cyberAuditEntries[0].title).toBe("What evidence was available");
+    expect(model.cyberAuditEntries[0].detail).toContain("provided the incident evidence");
+    expect(model.cyberAuditEntries[1].title).toBe("What the detector found");
+    expect(model.cyberAuditEntries[1].detail).toContain("The strongest signals were Privilege change.");
+    expect(model.cyberAuditEntries[2].title).toBe("Why the model leaned suspicious");
     expect(model.modelType).toBe("ebm");
     expect(model.modelContributions[0].plainLanguage).toBe("A high failure ratio increased suspicion.");
     expect(model.latestDecision?.title).toContain("Human decision recorded");

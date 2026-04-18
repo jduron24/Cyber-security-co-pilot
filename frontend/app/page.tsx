@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { ActiveIncidentView } from "@/components/ActiveIncidentView";
@@ -8,12 +9,13 @@ import { QueuePanel } from "@/components/QueuePanel";
 import { ReportModal } from "@/components/ReportModal";
 import { ApiError, downloadReportPdf, getAgentAuth, listIncidents, loadIncidentWorkspace, postAgentQuery, postAlternative, postApprove, postDoubleCheck, postEscalate } from "@/lib/api";
 import { buildIncidentViewModel, mapQueueItem } from "@/lib/view-model";
+import type { QueueItem } from "@/lib/view-model";
 import type { OperatorHistoryResponse, RecordShape } from "@/types/api";
 
-const fallbackQueue = [
-  { id: "INC-1042", label: "INC-1042", site: "Water Plant East", severity: "High", state: "Needs review" },
-  { id: "INC-1038", label: "INC-1038", site: "County Records", severity: "Medium", state: "Monitoring" },
-  { id: "INC-1033", label: "INC-1033", site: "City Hospital Annex", severity: "Low", state: "Closed" },
+const fallbackQueue: QueueItem[] = [
+  { id: "INC-1042", label: "INC-1042", site: "Water Plant East", severity: "High", timestamp: null, state: "Needs review" },
+  { id: "INC-1038", label: "INC-1038", site: "County Records", severity: "Medium", timestamp: null, state: "Monitoring" },
+  { id: "INC-1033", label: "INC-1033", site: "City Hospital Annex", severity: "Low", timestamp: null, state: "Closed" },
 ];
 
 function logPage(event: string, payload?: unknown): void {
@@ -281,6 +283,9 @@ export default function Home() {
       <div className="app-frame reveal reveal-delay-1">
         <aside className="left-rail">
           <div className="brand-block">
+            <div className="brand-mark">
+              <Image alt="Sentinel logo" className="brand-logo" priority src="/logo.png" width={96} height={96} />
+            </div>
             <p className="eyebrow">Sentinel</p>
             <h1>Operator Console</h1>
             <p>Decision support with visible blind spots for non-expert operators.</p>

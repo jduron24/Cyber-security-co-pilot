@@ -16,8 +16,8 @@ function normalizeBaseUrl(value: string | undefined, fallback: string): string {
   return (value ?? fallback).trim().replace(/\s+/g, "").replace(/\/$/, "");
 }
 
-const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "http://127.0.0.1:8000");
-const AGENT_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_AGENT_API_BASE_URL, "http://127.0.0.1:8001");
+const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL, "/api/core");
+const AGENT_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_AGENT_API_BASE_URL, "/api/agent");
 
 function logApi(event: string, payload?: unknown): void {
   console.info(`[frontend/api] ${event}`, payload ?? "");

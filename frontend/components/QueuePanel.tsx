@@ -1,3 +1,5 @@
+import { StatusPill } from "./StatusPill";
+import { toneForSeverity } from "@/lib/view-model";
 import type { QueueItem } from "@/lib/view-model";
 
 export function QueuePanel({
@@ -26,12 +28,13 @@ export function QueuePanel({
             onClick={() => onSelectIncident(item.id)}
             type="button"
           >
-            <div>
+            <div className="queue-primary">
               <strong>{item.label}</strong>
               <p>{item.site}</p>
+              {item.timestamp ? <small className="queue-timestamp">{item.timestamp}</small> : null}
             </div>
             <div className="queue-meta">
-              <span>{item.severity}</span>
+              <StatusPill tone={toneForSeverity(item.severity)}>{item.severity}</StatusPill>
               <small>{item.state}</small>
             </div>
           </button>
