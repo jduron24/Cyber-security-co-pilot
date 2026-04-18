@@ -13,3 +13,34 @@ data/*.gz
 
 !data/data_plan.md
 
+# Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# Node / MCP server
+node_modules/
+mcp_server/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# ML artifacts
+artifacts/*.joblib
+
