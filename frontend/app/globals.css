@@ -596,6 +596,18 @@ textarea.text-input {
   margin-bottom: 12px;
 }
 
+.latest-decision-rationale {
+  margin-top: 8px;
+  font-weight: 600;
+  color: #173045;
+}
+
+.latest-decision-time {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+}
+
 .detail-list {
   margin-top: 18px;
 }

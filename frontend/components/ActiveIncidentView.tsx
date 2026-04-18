@@ -203,6 +203,8 @@ export function ActiveIncidentView({
             <div className="latest-decision">
               <strong>{viewModel.latestDecision.title}</strong>
               <p>{viewModel.latestDecision.detail}</p>
+              {viewModel.latestDecision.rationale ? <p className="latest-decision-rationale">Rationale: {viewModel.latestDecision.rationale}</p> : null}
+              {viewModel.latestDecision.recordedAt ? <small className="latest-decision-time">Recorded {viewModel.latestDecision.recordedAt}</small> : null}
             </div>
           ) : null}
           <label className="field-label" htmlFor="operator-rationale">

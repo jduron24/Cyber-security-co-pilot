@@ -203,8 +203,12 @@ export default function Home() {
         (typeof chosenAction.action_id === "string" && chosenAction.action_id) ||
         (action === "double-check" ? "Double check recorded" : "Action recorded");
       const decisionType = typeof result.decision_type === "string" ? result.decision_type : "decision recorded";
+      const normalizedDecisionType = decisionType.replace(/_/g, " ");
+      const normalizedRationale = rationale.trim();
       logPage("run_action_success", { action, result });
-      setActionMessage(`${decisionType.replace(/_/g, " ")}: ${chosenLabel}`);
+      setActionMessage(
+        `Human decision recorded: ${normalizedDecisionType} -> ${chosenLabel}.${normalizedRationale ? ` Rationale saved: ${normalizedRationale}` : " No rationale recorded."}`,
+      );
       await refreshWorkspace(selectedIncidentId);
     } catch (error) {
       console.error("[frontend/page] run_action_failed", { action, selectedIncidentId, error });

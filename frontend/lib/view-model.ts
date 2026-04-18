@@ -36,6 +36,8 @@ export interface AlternativeItem {
 export interface LatestDecisionItem {
   title: string;
   detail: string;
+  rationale: string | null;
+  recordedAt: string | null;
 }
 
 export interface AuditEntry {
@@ -215,10 +217,11 @@ export function buildAuditEntries(operatorHistory: OperatorHistoryResponse | nul
   const decisions = operatorHistory.recent_decisions.map((item) => {
     const row = asRecord(item);
     const chosenAction = asOptionalString(row.chosen_action_label) ?? asOptionalString(row.chosen_action_id) ?? "Decision recorded";
+    const rationale = asOptionalString(row.rationale);
     return {
       time: asString(row.created_at, "Recently"),
       title: toSentenceCase(asString(row.decision_type, "operator update")),
-      detail: `${chosenAction}${asBoolean(row.used_double_check) ? " after double check" : ""}`,
+      detail: `${chosenAction}${asBoolean(row.used_double_check) ? " after double check" : ""}${rationale ? `. Rationale: ${rationale}` : ""}`,
     };
   });
   const reviewEvents = operatorHistory.review_events.map((item) => {
@@ -369,11 +372,10 @@ export function buildIncidentViewModel(
     doubleCheckCandidates: asArray<string>(asRecord(coverageReviewRecord.double_check).candidates).filter(Boolean),
     latestDecision: Object.keys(latestDecision).length
       ? {
-          title: toSentenceCase(asString(latestDecision.decision_type, "decision recorded")),
-          detail: asString(
-            displayLabel(latestDecision.chosen_action_label ?? latestDecision.chosen_action_id, "Action recorded"),
-            "Action recorded",
-          ),
+          title: `Human decision recorded: ${toSentenceCase(asString(latestDecision.decision_type, "decision recorded"))}`,
+          detail: asString(displayLabel(latestDecision.chosen_action_label ?? latestDecision.chosen_action_id, "Action recorded"), "Action recorded"),
+          rationale: asOptionalString(latestDecision.rationale),
+          recordedAt: asOptionalString(latestDecision.created_at),
         }
       : null,
     operatorAuditEntries: buildAuditEntries(operatorHistory),

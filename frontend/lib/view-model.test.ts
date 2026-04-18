@@ -20,7 +20,12 @@ describe("view-model helpers", () => {
     const history: OperatorHistoryResponse = {
       latest_decision: null,
       recent_decisions: [
-        { created_at: "2025-01-01T00:00:00Z", decision_type: "approve_recommendation", chosen_action_label: "Reset credentials" },
+        {
+          created_at: "2025-01-01T00:00:00Z",
+          decision_type: "approve_recommendation",
+          chosen_action_label: "Reset credentials",
+          rationale: "Suspicious login followed by access-key creation.",
+        },
       ],
       review_events: [{ created_at: "2025-01-01T00:01:00Z", event_type: "double_check_requested", payload_json: { decision_risk_note: "Need network review." } }],
     };
@@ -28,6 +33,7 @@ describe("view-model helpers", () => {
     const entries = buildAuditEntries(history);
     expect(entries).toHaveLength(2);
     expect(entries[0].title).toBe("Approve Recommendation");
+    expect(entries[0].detail).toContain("Rationale: Suspicious login followed by access-key creation.");
     expect(entries[1].detail).toBe("Need network review.");
   });
 
@@ -81,7 +87,16 @@ describe("view-model helpers", () => {
         what_could_change_the_decision: ["A"],
         double_check: { candidates: ["Review network logs"] },
       },
-      null,
+      {
+        latest_decision: {
+          decision_type: "approve_recommendation",
+          chosen_action_label: "Reset credentials",
+          rationale: "The credential reset is the fastest containment step.",
+          created_at: "2025-01-01T00:05:00Z",
+        },
+        recent_decisions: [],
+        review_events: [],
+      },
       "incident_1",
     );
 
@@ -93,6 +108,9 @@ describe("view-model helpers", () => {
     expect(model.recommendationMayBeIncomplete).toBe(true);
     expect(model.cyberAuditEntries[0].title).toContain("Evidence package");
     expect(model.cyberAuditEntries[1].title).toContain("Detector scored high risk");
+    expect(model.latestDecision?.title).toContain("Human decision recorded");
+    expect(model.latestDecision?.rationale).toBe("The credential reset is the fastest containment step.");
+    expect(model.latestDecision?.recordedAt).toBe("2025-01-01T00:05:00Z");
   });
 
   it("maps known backend keys to operator-facing labels", () => {

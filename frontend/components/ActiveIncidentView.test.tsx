@@ -32,8 +32,14 @@ const viewModel: IncidentViewModel = {
   coverage: [{ category: "Network", status: "Not Checked", rawStatus: "not_checked", note: "Missing: network_logs" }],
   whatCouldChange: ["If network_logs shows more activity, the recommendation may change."],
   doubleCheckCandidates: ["Review network logs"],
-  latestDecision: null,
-  auditEntries: [],
+  latestDecision: {
+    title: "Human decision recorded: Approve Recommendation",
+    detail: "Reset credentials",
+    rationale: "Contain the account before more changes happen.",
+    recordedAt: "2025-01-01T00:05:00Z",
+  },
+  operatorAuditEntries: [],
+  cyberAuditEntries: [],
 };
 
 describe("ActiveIncidentView", () => {
@@ -66,6 +72,8 @@ describe("ActiveIncidentView", () => {
     );
 
     expect(screen.getByText(/recommendation may be incomplete/i)).toBeInTheDocument();
+    expect(screen.getByText(/human decision recorded/i)).toBeInTheDocument();
+    expect(screen.getByText(/rationale: contain the account before more changes happen\./i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /explain privilege change/i }));
     expect(screen.getByText(/permissions or access levels changed/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /temporary access lock/i }));
