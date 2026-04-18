@@ -15,7 +15,8 @@ class DetectorRepository:
         logger.debug("Fetching detector result incident_id=%s", incident_id)
         query = """
         SELECT incident_id, risk_score, risk_band, top_signals_json, counter_signals_json, detector_labels_json,
-               retrieved_patterns_json, data_sources_used_json, model_version, created_at
+               retrieved_patterns_json, data_sources_used_json, model_type, explanation_json,
+               feature_contributions_json, model_version, created_at
         FROM detector_results
         WHERE incident_id = %s
         ORDER BY created_at DESC, detector_result_id DESC

@@ -57,6 +57,9 @@ class DetectorRecordDTO:
     detector_labels: list[Any] = field(default_factory=list)
     retrieved_patterns: list[Any] = field(default_factory=list)
     data_sources_used: list[Any] = field(default_factory=list)
+    model_type: str | None = None
+    explanation: dict[str, Any] = field(default_factory=dict)
+    feature_contributions: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_record(cls, record: dict[str, Any]) -> "DetectorRecordDTO":
@@ -68,6 +71,9 @@ class DetectorRecordDTO:
             detector_labels=list(record.get("detector_labels_json") or record.get("detector_labels") or []),
             retrieved_patterns=list(record.get("retrieved_patterns_json") or record.get("retrieved_patterns") or []),
             data_sources_used=list(record.get("data_sources_used_json") or record.get("data_sources_used") or []),
+            model_type=record.get("model_type"),
+            explanation=dict(record.get("explanation_json") or record.get("explanation") or {}),
+            feature_contributions=list(record.get("feature_contributions_json") or record.get("feature_contributions") or []),
         )
 
 

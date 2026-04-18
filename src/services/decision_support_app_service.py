@@ -113,6 +113,9 @@ def assemble_decision_support_inputs_dto(
         "detector_labels": list(detector_record.detector_labels),
         "retrieved_patterns": list(detector_record.retrieved_patterns),
         "data_sources_used": list(detector_record.data_sources_used),
+        "model_type": detector_record.model_type,
+        "explanation": dict(detector_record.explanation),
+        "feature_contributions": list(detector_record.feature_contributions),
     }
     coverage = coverage_record.to_decision_support_input()
     policy = dict(policy_record.policy_json)

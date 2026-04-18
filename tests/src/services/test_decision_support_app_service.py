@@ -1,4 +1,4 @@
-from src.services.decision_support_app_service import DecisionSupportAppService
+from src.services.decision_support_app_service import DecisionSupportAppService, assemble_decision_support_inputs
 
 
 class FakeBundle:
@@ -36,6 +36,9 @@ class FakeBundle:
             "detector_labels_json": ["root_actor"],
             "retrieved_patterns_json": ["Root-Driven Sensitive Activity"],
             "data_sources_used_json": ["incident_model"],
+            "model_type": "ebm",
+            "explanation_json": {"prediction_probability": 0.82},
+            "feature_contributions_json": [{"feature": "failure_ratio", "contribution": 0.34}],
         }
 
     def fetch_latest_coverage_assessment(self, incident_id: str):
@@ -84,3 +87,17 @@ def test_app_service_generates_and_persists_result():
     assert bundle.saved is not None
     assert bundle.saved[2] == "v1"
     assert len(alerting.calls) == 1
+
+
+def test_assemble_inputs_carries_detector_explanation_fields():
+    bundle = FakeBundle()
+    detector_output = assemble_decision_support_inputs(
+        incident_record=bundle.fetch_incident("INC-DB-1"),
+        evidence_record=bundle.fetch_latest_evidence_package("INC-DB-1"),
+        detector_record=bundle.fetch_latest_detector_result("INC-DB-1"),
+        coverage_record=bundle.fetch_latest_coverage_assessment("INC-DB-1"),
+        policy_record=bundle.fetch_policy_snapshot(),
+    )["detector_output"]
+    assert detector_output["model_type"] == "ebm"
+    assert detector_output["explanation"]["prediction_probability"] == 0.82
+    assert detector_output["feature_contributions"][0]["feature"] == "failure_ratio"

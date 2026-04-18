@@ -45,9 +45,16 @@ CREATE TABLE IF NOT EXISTS detector_results (
     detector_labels_json JSONB,
     retrieved_patterns_json JSONB,
     data_sources_used_json JSONB,
+    model_type TEXT,
+    explanation_json JSONB,
+    feature_contributions_json JSONB,
     model_version TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE detector_results ADD COLUMN IF NOT EXISTS model_type TEXT;
+ALTER TABLE detector_results ADD COLUMN IF NOT EXISTS explanation_json JSONB;
+ALTER TABLE detector_results ADD COLUMN IF NOT EXISTS feature_contributions_json JSONB;
 
 CREATE INDEX IF NOT EXISTS idx_detector_results_incident_id ON detector_results(incident_id);
 
