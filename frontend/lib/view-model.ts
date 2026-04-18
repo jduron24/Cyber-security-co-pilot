@@ -14,6 +14,13 @@ export interface SignalItem {
   explanation: string;
 }
 
+export interface ModelContributionItem {
+  feature: string;
+  contribution: number;
+  direction: string;
+  plainLanguage: string;
+}
+
 export interface TimelineItem {
   step: string;
   title: string;
@@ -70,6 +77,8 @@ export interface IncidentViewModel {
   };
   alternatives: AlternativeItem[];
   signals: SignalItem[];
+  modelType: string | null;
+  modelContributions: ModelContributionItem[];
   timeline: TimelineItem[];
   coverage: CoverageItem[];
   whatCouldChange: string[];
@@ -268,6 +277,16 @@ export function buildCyberAuditEntries(
       detail: `${labels.length ? `Top detector labels: ${labels.join(", ")}.` : "Detector output available."}${sources ? ` Data sources: ${sources}.` : ""}`,
       source: "Detector",
     });
+    const contributions = asArray<RecordShape>(detector.feature_contributions_json).slice(0, 3);
+    if (contributions.length) {
+      entries.push({
+        title: `Model explanation from ${asString(detector.model_type, "detector model").toUpperCase()}`,
+        detail: contributions
+          .map((item) => asString(item.plain_language, `${displayLabel(item.feature, "Signal")} ${asString(item.direction, "affected the score")}.`))
+          .join(" "),
+        source: "Detector explanation",
+      });
+    }
   }
 
   if (Object.keys(coverage).length) {
@@ -330,6 +349,14 @@ export function buildIncidentViewModel(
   const coverageItems = asArray<RecordShape>(coverageReviewRecord.coverage_status_by_category);
   const completeness = asRecord(coverageReviewRecord.completeness);
   const latestDecision = asRecord(operatorHistory?.latest_decision ?? null);
+  const detectorRecord = asRecord(detectorResult);
+  const modelContributions = asArray<RecordShape>(detectorRecord.feature_contributions_json).slice(0, 5).map((item) => ({
+    feature: displayLabel(item.feature, "Signal"),
+    contribution: asNumber(item.contribution),
+    direction: asString(item.direction, "affected the score"),
+    plainLanguage: asString(item.plain_language, "This factor affected the model score."),
+  }));
+  const confidence = deriveConfidencePercent(detectorRecord, coverageReviewRecord, incidentSummary);
 
   return {
     title: asString(incidentSummary.title ?? incidentRecord.title, "Suspicious access activity"),
@@ -337,7 +364,7 @@ export function buildIncidentViewModel(
     severity: toSentenceCase(asString(incidentSummary.risk_band ?? incidentRecord.severity_hint, "high")),
     site: asString(asRecord(incidentRecord.entities).primary_source_ip_address ?? incidentRecord.title, "Unknown site"),
     summary: asString(incidentSummary.summary ?? incidentRecord.summary, "Incident summary unavailable."),
-    confidence: Math.round(asNumber(incidentSummary.risk_score, 0.84) * 100),
+    confidence,
     recommendationMayBeIncomplete: asBoolean(coverageReviewRecord.recommendation_may_be_incomplete),
     incompletenessWarning: asOptionalString(completeness.warning),
     decisionRiskNote: asString(coverageReviewRecord.decision_risk_note, "Review available evidence before acting."),
@@ -358,6 +385,8 @@ export function buildIncidentViewModel(
       detail: asString(item.detail, displayLabel(item.label ?? item.feature, "Suspicious activity detected.")),
       explanation: explainSignal(item.label ?? item.feature),
     })),
+    modelType: asOptionalString(detectorRecord.model_type),
+    modelContributions,
     timeline: eventSequence.slice(0, 6).map((item, index) => ({
       step: `Step ${index + 1}`,
       title: asString(item, "Activity"),
@@ -381,4 +410,31 @@ export function buildIncidentViewModel(
     operatorAuditEntries: buildAuditEntries(operatorHistory),
     cyberAuditEntries: buildCyberAuditEntries(evidencePackage, detectorResult, coverageAssessment, decisionSupportResult, coverageReviewRecord),
   };
+}
+
+function deriveConfidencePercent(
+  detectorRecord: RecordShape,
+  coverageReviewRecord: RecordShape,
+  incidentSummary: RecordShape,
+): number {
+  const explanation = asRecord(detectorRecord.explanation_json);
+  const modelConfidence = asNumber(explanation.confidence, Number.NaN);
+  const fallbackRiskScore = asNumber(incidentSummary.risk_score, 0.72);
+  const completeness = asRecord(coverageReviewRecord.completeness);
+  const completenessLevel = asString(
+    completeness.level ?? coverageReviewRecord.completeness_level,
+    "medium",
+  ).toLowerCase();
+
+  let cap = 85;
+  if (completenessLevel.includes("high")) cap = 92;
+  else if (completenessLevel.includes("medium")) cap = 78;
+  else if (completenessLevel.includes("low")) cap = 68;
+
+  if (asBoolean(coverageReviewRecord.recommendation_may_be_incomplete) && cap > 78) {
+    cap = 78;
+  }
+
+  const rawPercent = Number.isFinite(modelConfidence) ? Math.round(modelConfidence * 100) : Math.round(fallbackRiskScore * 100);
+  return Math.max(55, Math.min(rawPercent, cap));
 }

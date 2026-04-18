@@ -23,6 +23,7 @@ class DemoScenario:
     coverage_categories: list[str]
     source_ip_hint: str | None = None
     actor_hint: str | None = None
+    detector_profile: dict[str, Any] = field(default_factory=dict)
     coverage_plan: dict[str, Any] = field(default_factory=dict)
     double_check_plan: dict[str, Any] = field(default_factory=dict)
     records: list[dict[str, Any]] = field(default_factory=list)
@@ -95,6 +96,7 @@ def write_demo_stream(
                 "coverage_categories": scenario.coverage_categories,
                 "source_ip_hint": scenario.source_ip_hint,
                 "actor_hint": scenario.actor_hint,
+                "detector_profile": scenario.detector_profile,
                 "coverage_plan": scenario.coverage_plan,
                 "double_check_plan": scenario.double_check_plan,
                 "record_count": len(scenario.records),
@@ -140,6 +142,10 @@ def _scenario_incomplete_unusual_login(base_time: datetime) -> DemoScenario:
         coverage_categories=["login", "identity", "network"],
         source_ip_hint=source_ip,
         actor_hint=actor["arn"],
+        detector_profile={
+            "display_probability": 0.74,
+            "display_risk_band": "high",
+        },
         coverage_plan={
             "completeness_level": "medium",
             "checks": [
@@ -212,6 +218,10 @@ def _scenario_complete_reset_case(base_time: datetime) -> DemoScenario:
         coverage_categories=["login", "identity", "resource_activity"],
         source_ip_hint=source_ip,
         actor_hint=actor["arn"],
+        detector_profile={
+            "display_probability": 0.93,
+            "display_risk_band": "high",
+        },
         coverage_plan={
             "completeness_level": "high",
             "checks": [
@@ -244,6 +254,10 @@ def _scenario_missing_device_context(base_time: datetime) -> DemoScenario:
         coverage_categories=["login", "resource_activity", "device"],
         source_ip_hint=source_ip,
         actor_hint=actor["arn"],
+        detector_profile={
+            "display_probability": 0.58,
+            "display_risk_band": "medium",
+        },
         coverage_plan={
             "completeness_level": "low",
             "checks": [

@@ -28,6 +28,15 @@ const viewModel: IncidentViewModel = {
     },
   ],
   signals: [{ label: "Privilege change", detail: "Permissions changed.", explanation: "This means permissions or access levels changed." }],
+  modelType: "ebm",
+  modelContributions: [
+    {
+      feature: "Failure ratio",
+      contribution: 0.34,
+      direction: "increases suspicion",
+      plainLanguage: "A high failure ratio increased suspicion.",
+    },
+  ],
   timeline: [{ step: "Step 1", title: "ConsoleLogin" }],
   coverage: [{ category: "Network", status: "Not Checked", rawStatus: "not_checked", note: "Missing: network_logs" }],
   whatCouldChange: ["If network_logs shows more activity, the recommendation may change."],
@@ -49,6 +58,7 @@ describe("ActiveIncidentView", () => {
     render(
       <ActiveIncidentView
         viewModel={viewModel}
+        rawLogs={[]}
         viewMode="simple"
         incidentLoading={false}
         incidentError={null}
@@ -89,6 +99,15 @@ describe("ActiveIncidentView", () => {
     render(
       <ActiveIncidentView
         viewModel={viewModel}
+        rawLogs={[
+          {
+            event_id: "evt-1",
+            event_name: "ConsoleLogin",
+            event_source: "signin.amazonaws.com",
+            event_index: 0,
+            event_payload: { eventName: "ConsoleLogin", sourceIPAddress: "203.0.113.10" },
+          },
+        ]}
         viewMode="expert"
         incidentLoading={false}
         incidentError={null}
@@ -113,6 +132,10 @@ describe("ActiveIncidentView", () => {
     );
 
     expect(screen.getByText(/why sentinel is concerned/i)).toBeInTheDocument();
+    expect(screen.getByText(/why the model flagged this/i)).toBeInTheDocument();
+    expect(screen.getByText(/a high failure ratio increased suspicion\./i)).toBeInTheDocument();
+    expect(screen.getByText(/raw logs for expert review/i)).toBeInTheDocument();
+    expect(screen.getByText(/signin\.amazonaws\.com/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /explain privilege change/i }));
     expect(screen.getByText(/permissions or access levels changed/i)).toBeInTheDocument();
     expect(screen.getByText(/^agent$/i)).toBeInTheDocument();

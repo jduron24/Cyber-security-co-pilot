@@ -7,6 +7,7 @@ import type { RecordShape } from "@/types/api";
 
 export function ActiveIncidentView({
   viewModel,
+  rawLogs,
   viewMode,
   incidentLoading,
   incidentError,
@@ -29,6 +30,7 @@ export function ActiveIncidentView({
   onAgentAsk,
 }: {
   viewModel: IncidentViewModel;
+  rawLogs: RecordShape[];
   viewMode: "simple" | "expert";
   incidentLoading: boolean;
   incidentError: string | null;
@@ -51,6 +53,7 @@ export function ActiveIncidentView({
   onAgentAsk: () => void;
 }) {
   const [openSignal, setOpenSignal] = useState<string | null>(null);
+  const [openRawLog, setOpenRawLog] = useState<string | null>(null);
   const isExpert = viewMode === "expert";
 
   if (!isExpert) {
@@ -293,7 +296,7 @@ export function ActiveIncidentView({
           </article>
         ) : null}
 
-        <article className="card reveal reveal-delay-3">
+        <article className="card card--coverage reveal reveal-delay-3">
           <div className="card-heading">
             <span className="card-kicker">Coverage and blind spots</span>
             <StatusPill tone={viewModel.recommendationMayBeIncomplete ? "warning" : "safe"}>
@@ -323,7 +326,60 @@ export function ActiveIncidentView({
           ) : null}
         </article>
 
-        <article className="card reveal reveal-delay-4">
+        <article className="card card--model-explanation reveal reveal-delay-3">
+          <div className="card-heading">
+            <span className="card-kicker">Why the model flagged this</span>
+            <StatusPill tone="neutral">{viewModel.modelType ? viewModel.modelType.toUpperCase() : "Model"}</StatusPill>
+          </div>
+          {viewModel.modelContributions.length ? (
+            <div className="detail-list detail-list--compact">
+              <ul>
+                {viewModel.modelContributions.map((item) => (
+                  <li key={`${item.feature}-${item.direction}`}>
+                    <strong>{item.feature}</strong>: {item.plainLanguage}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="muted">No model-specific explanation was recorded for this detector result.</p>
+          )}
+        </article>
+
+        <article className="card card--raw-logs reveal reveal-delay-3">
+          <div className="card-heading">
+            <span className="card-kicker">Raw logs for expert review</span>
+            <StatusPill tone="neutral">{rawLogs.length} events</StatusPill>
+          </div>
+          {rawLogs.length ? (
+            <div className="raw-log-list">
+              {rawLogs.map((event) => (
+                <details
+                  className="raw-log-entry"
+                  key={`${String(event.event_id)}-${String(event.event_index)}`}
+                  open={openRawLog === String(event.event_id)}
+                  onToggle={(toggleEvent) => {
+                    const isOpen = (toggleEvent.currentTarget as HTMLDetailsElement).open;
+                    setOpenRawLog(isOpen ? String(event.event_id) : null);
+                  }}
+                >
+                  <summary className="raw-log-summary">
+                    <div className="raw-log-meta">
+                      <strong>{String(event.event_name ?? "Event")}</strong>
+                      <small>{String(event.event_source ?? "unknown source")}</small>
+                    </div>
+                    <span className="raw-log-toggle">{openRawLog === String(event.event_id) ? "Hide payload" : "View payload"}</span>
+                  </summary>
+                  <pre className="raw-log-pre">{JSON.stringify(event.event_payload ?? event, null, 2)}</pre>
+                </details>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No raw event payloads were recorded for this incident.</p>
+          )}
+        </article>
+
+        <article className="card card--alternatives reveal reveal-delay-4">
           <div className="card-heading">
             <span className="card-kicker">Alternatives</span>
             <StatusPill tone="neutral">{viewModel.alternatives.length} options</StatusPill>
@@ -351,7 +407,7 @@ export function ActiveIncidentView({
           </div>
         </article>
 
-        <article className="card reveal reveal-delay-4">
+        <article className="card card--human-decision reveal reveal-delay-4">
           <div className="card-heading">
             <span className="card-kicker">Human decision and audit</span>
             <StatusPill tone="safe">Live workflow</StatusPill>

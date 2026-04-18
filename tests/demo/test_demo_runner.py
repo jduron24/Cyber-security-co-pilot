@@ -24,7 +24,7 @@ def _write_network_sample(sample_dir: Path) -> None:
 def test_demo_runner_executes_current_pipeline_end_to_end(tmp_path: Path):
     sample_dir = tmp_path / "network-sample"
     _write_network_sample(sample_dir)
-    report = run_demo_pipeline(project_root=".", output_dir=str(tmp_path), network_sample_dir=sample_dir)
+    report = run_demo_pipeline(project_root=".", output_dir=str(tmp_path), network_sample_dir=sample_dir, model_training_input=None)
     assert report["event_count"] > 0
     assert report["incident_count"] >= 3
     assert len(report["scenario_outputs"]) == 3
@@ -34,6 +34,13 @@ def test_demo_runner_executes_current_pipeline_end_to_end(tmp_path: Path):
     incomplete = scenario_map["unusual_login_incomplete_network"]
     complete = scenario_map["complete_root_privilege_case"]
     unavailable = scenario_map["device_context_unavailable"]
+
+    assert report["demo_model"]["model_type"] in {"ebm", "logistic"}
+    assert incomplete["incident_events"]
+    assert incomplete["incident_events"][0]["event_payload"]["eventName"] == incomplete["incident_events"][0]["event_name"]
+    assert incomplete["initial_review"]["detector_output"]["model_type"] in {"ebm", "logistic"}
+    assert incomplete["initial_review"]["detector_output"]["feature_contributions"]
+    assert incomplete["initial_review"]["detector_output"]["data_sources_used"][-1] == "demo_incident_model"
 
     assert incomplete["initial_review"]["coverage_review"]["recommendation_may_be_incomplete"] is True
     assert incomplete["initial_review"]["decision_support"]["decision_support_result"]["recommended_action"]["action_id"] == "reset_credentials"
@@ -60,11 +67,13 @@ def test_demo_runner_executes_current_pipeline_end_to_end(tmp_path: Path):
 def test_demo_runner_writes_report_artifacts(tmp_path: Path):
     sample_dir = tmp_path / "network-sample"
     _write_network_sample(sample_dir)
-    report = run_demo_pipeline(project_root=".", output_dir=str(tmp_path), network_sample_dir=sample_dir)
+    report = run_demo_pipeline(project_root=".", output_dir=str(tmp_path), network_sample_dir=sample_dir, model_training_input=None)
     report_path = Path(tmp_path) / "reports" / "demo_run_report.json"
     assert report_path.exists()
     saved = json.loads(report_path.read_text(encoding="utf-8"))
     assert saved["incident_count"] == report["incident_count"]
     assert len(saved["scenario_outputs"]) == 3
     assert "initial_review" in saved["scenario_outputs"][0]
+    assert "incident_events" in saved["scenario_outputs"][0]
+    assert saved["scenario_outputs"][0]["initial_review"]["detector_output"]["feature_contributions"]
     assert saved["network_evidence_package"]["suspicious_flow_count"] == 2

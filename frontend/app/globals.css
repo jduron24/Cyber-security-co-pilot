@@ -431,10 +431,6 @@ button:hover {
   grid-column: span 7;
 }
 
-.dashboard-grid--app > .card:nth-child(2) {
-  grid-column: span 5;
-}
-
 .dashboard-grid--app > .card--confidence {
   grid-column: span 3;
   padding: 18px;
@@ -442,9 +438,11 @@ button:hover {
   max-width: 320px;
 }
 
-.dashboard-grid--app > .card:nth-child(3),
-.dashboard-grid--app > .card:nth-child(4),
-.dashboard-grid--app > .card:nth-child(5) {
+.dashboard-grid--app > .card--coverage,
+.dashboard-grid--app > .card--model-explanation,
+.dashboard-grid--app > .card--raw-logs,
+.dashboard-grid--app > .card--alternatives,
+.dashboard-grid--app > .card--human-decision {
   grid-column: span 6;
 }
 
@@ -691,6 +689,10 @@ textarea.text-input {
   margin-top: 18px;
 }
 
+.detail-list--compact {
+  margin-top: 8px;
+}
+
 .detail-list ul {
   margin: 10px 0 0;
   padding-left: 18px;
@@ -713,6 +715,61 @@ textarea.text-input {
   border: 1px solid rgba(18, 32, 51, 0.08);
   background: rgba(255, 255, 255, 0.55);
   padding: 14px;
+}
+
+.raw-log-list {
+  display: grid;
+  gap: 12px;
+  max-height: 620px;
+  overflow: auto;
+  padding-right: 6px;
+}
+
+.raw-log-entry {
+  border-radius: 16px;
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.raw-log-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+}
+
+.raw-log-summary::-webkit-details-marker {
+  display: none;
+}
+
+.raw-log-toggle {
+  flex: 0 0 auto;
+  color: #30566f;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.raw-log-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.raw-log-pre {
+  margin: 0;
+  padding: 0 14px 14px;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre;
+  word-break: normal;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: #284055;
 }
 
 .audit-grid {
@@ -827,11 +884,13 @@ textarea.text-input {
   }
 
   .dashboard-grid--app > .card:nth-child(1),
-  .dashboard-grid--app > .card:nth-child(2),
-  .dashboard-grid--app > .card:nth-child(3),
-  .dashboard-grid--app > .card:nth-child(4),
-  .dashboard-grid--app > .card:nth-child(5) {
+  .dashboard-grid--app > .card--confidence,
+  .dashboard-grid--app > .card--coverage,
+  .dashboard-grid--app > .card--model-explanation,
+  .dashboard-grid--app > .card--alternatives,
+  .dashboard-grid--app > .card--human-decision {
     grid-column: 1 / -1;
+    max-width: none;
   }
 
   .audit-grid {

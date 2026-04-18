@@ -23,6 +23,7 @@ class IncidentListResponse(BaseModel):
 
 class IncidentContextResponse(BaseModel):
     incident: dict[str, Any]
+    incident_events: list[dict[str, Any]] = []
     evidence_package: dict[str, Any] | None = None
     detector_result: dict[str, Any] | None = None
     coverage_assessment: dict[str, Any] | None = None

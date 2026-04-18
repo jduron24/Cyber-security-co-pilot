@@ -37,6 +37,9 @@ class DecisionSupportRepositoryBundle:
     def fetch_incident(self, incident_id: str):
         return self.incidents_repo.fetch_incident(incident_id)
 
+    def fetch_incident_events(self, incident_id: str, limit: int = 50):
+        return self.incidents_repo.fetch_incident_events(incident_id, limit)
+
     def list_incidents(self, limit: int = 25):
         return self.incidents_repo.list_incidents(limit)
 
@@ -86,6 +89,9 @@ class CoverageReviewRepositoryBundle:
 
     def fetch_incident(self, incident_id: str):
         return self.incidents_repo.fetch_incident(incident_id)
+
+    def fetch_incident_events(self, incident_id: str, limit: int = 50):
+        return self.incidents_repo.fetch_incident_events(incident_id, limit)
 
     def list_incidents(self, limit: int = 25):
         return self.incidents_repo.list_incidents(limit)
@@ -148,6 +154,9 @@ class AgentRepositoryBundle:
 
     def fetch_incident(self, incident_id: str):
         return self.incidents_repo.fetch_incident(incident_id)
+
+    def fetch_incident_events(self, incident_id: str, limit: int = 50):
+        return self.incidents_repo.fetch_incident_events(incident_id, limit)
 
     def list_incidents(self, limit: int = 25):
         return self.incidents_repo.list_incidents(limit)

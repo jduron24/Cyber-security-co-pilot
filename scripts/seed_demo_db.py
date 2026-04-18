@@ -91,6 +91,25 @@ def main() -> int:
                     ),
                 )
 
+                for event in scenario_output.get("incident_events") or []:
+                    cur.execute(
+                        """
+                        INSERT INTO incident_events (
+                            incident_id, event_id, event_time, event_name, event_source, event_index, event_payload
+                        )
+                        VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
+                        """,
+                        (
+                            event["incident_id"],
+                            event["event_id"],
+                            event["event_time"],
+                            event["event_name"],
+                            event["event_source"],
+                            event["event_index"],
+                            json.dumps(event["event_payload"]),
+                        ),
+                    )
+
                 cur.execute(
                     """
                     INSERT INTO evidence_packages (incident_id, summary_json, provenance_json, raw_refs_json)
@@ -109,9 +128,10 @@ def main() -> int:
                     """
                     INSERT INTO detector_results (
                         incident_id, risk_score, risk_band, top_signals_json, counter_signals_json,
-                        detector_labels_json, retrieved_patterns_json, data_sources_used_json, model_version
+                        detector_labels_json, retrieved_patterns_json, data_sources_used_json,
+                        model_type, explanation_json, feature_contributions_json, model_version
                     )
-                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s)
+                    VALUES (%s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s)
                     """,
                     (
                         incident_id,
@@ -122,7 +142,10 @@ def main() -> int:
                         json.dumps(detector_output["detector_labels"]),
                         json.dumps(detector_output["retrieved_patterns"]),
                         json.dumps(detector_output["data_sources_used"]),
-                        "demo-weak-labels",
+                        detector_output.get("model_type"),
+                        json.dumps(detector_output.get("explanation") or {}),
+                        json.dumps(detector_output.get("feature_contributions") or []),
+                        f"demo-{detector_output.get('model_type') or 'model'}",
                     ),
                 )
 

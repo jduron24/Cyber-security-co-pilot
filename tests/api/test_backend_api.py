@@ -30,6 +30,9 @@ class FakeCoverageReviewRepositories:
     def fetch_incident(self, incident_id: str):
         return {"incident_id": incident_id, "title": "Stored incident"}
 
+    def fetch_incident_events(self, incident_id: str, limit: int = 50):
+        return [{"incident_id": incident_id, "event_id": "evt-1", "event_payload": {"eventName": "ConsoleLogin"}}]
+
     def fetch_latest_evidence_package(self, incident_id: str):
         return {"summary_json": {"summary": "Stored summary"}}
 
@@ -110,6 +113,7 @@ def test_backend_incident_routes(monkeypatch):
     incident_response = client.get("/incidents/incident-1")
     assert incident_response.status_code == 200
     assert incident_response.json()["incident"]["incident_id"] == "incident-1"
+    assert incident_response.json()["incident_events"][0]["event_id"] == "evt-1"
 
     decision_response = client.get("/incidents/incident-1/decision-support")
     assert decision_response.status_code == 200
