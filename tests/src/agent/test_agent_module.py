@@ -6,7 +6,7 @@ import pytest
 from src.agent.auth import CodexAuthError, load_codex_access_token, validate_codex_auth_base_url
 from src.agent.openai_compat import OpenAICompatConfig, OpenAICompatError, create_chat_completion, extract_text_content
 from src.agent.react import ReactStep
-from src.agent.service import DecisionSupportAgent, recover_answer_after_loop
+from src.agent.service import DecisionSupportAgent, normalize_operator_answer, recover_answer_after_loop
 from src.services.agent_app_service import AgentAppConfig, load_agent_app_config, query_incident_agent
 
 
@@ -207,6 +207,38 @@ def test_recover_answer_after_loop_returns_grounded_finish():
 
     assert answer == "Use the stored recommendation."
     assert reasoning_trace[-1]["status"] == "finished_after_loop"
+
+
+def test_normalize_operator_answer_formats_json_string_for_operator():
+    answer = normalize_operator_answer(
+        json.dumps(
+            {
+                "recommended_next_step": "Collect more evidence before taking disruptive action.",
+                "why": "Important checks are still missing.",
+                "missing_context": "Device context was unavailable for this session.",
+            }
+        )
+    )
+
+    assert answer.startswith("Collect more evidence before taking disruptive action.")
+    assert "Why: Important checks are still missing." in answer
+    assert "Missing context: Device context was unavailable for this session." in answer
+
+
+def test_normalize_operator_answer_supports_summary_shape():
+    answer = normalize_operator_answer(
+        json.dumps(
+            {
+                "summary": "A user signed in and then launched a new virtual machine.",
+                "explanation": "That sequence can indicate account misuse followed by resource creation.",
+                "uncertainty": "Network telemetry was not checked.",
+            }
+        )
+    )
+
+    assert answer.startswith("A user signed in and then launched a new virtual machine.")
+    assert "Why: That sequence can indicate account misuse followed by resource creation." in answer
+    assert "Missing context: Network telemetry was not checked." in answer
 
 
 def test_agent_can_load_mcp_cyber_context():
