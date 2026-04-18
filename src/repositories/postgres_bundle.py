@@ -6,6 +6,7 @@ from typing import Any, Callable
 from .decision_support_repo import DecisionSupportResultsRepository
 from .detector_repo import DetectorRepository
 from .evidence_repo import EvidenceRepository
+from .incident_notification_repo import IncidentNotificationRepository
 from .incidents_repo import IncidentsRepository
 from .operator_decision_repo import OperatorDecisionRepository
 from .policy_repo import PolicyRepository
@@ -19,6 +20,7 @@ class PostgresRepositoryBundle:
     policy_repo: PolicyRepository
     decision_support_repo: DecisionSupportResultsRepository
     operator_decision_repo: OperatorDecisionRepository
+    incident_notification_repo: IncidentNotificationRepository
 
     @classmethod
     def from_connection_factory(cls, connection_factory: Callable[[], Any]) -> "PostgresRepositoryBundle":
@@ -29,6 +31,7 @@ class PostgresRepositoryBundle:
             policy_repo=PolicyRepository(connection_factory),
             decision_support_repo=DecisionSupportResultsRepository(connection_factory),
             operator_decision_repo=OperatorDecisionRepository(connection_factory),
+            incident_notification_repo=IncidentNotificationRepository(connection_factory),
         )
 
     def fetch_incident(self, incident_id: str):
@@ -60,3 +63,9 @@ class PostgresRepositoryBundle:
 
     def fetch_latest_operator_decision(self, incident_id: str):
         return self.operator_decision_repo.fetch_latest_operator_decision(incident_id)
+
+    def fetch_incident_notification_by_dedupe_key(self, dedupe_key: str):
+        return self.incident_notification_repo.fetch_notification_by_dedupe_key(dedupe_key)
+
+    def save_incident_notification(self, **kwargs):
+        self.incident_notification_repo.save_notification(**kwargs)

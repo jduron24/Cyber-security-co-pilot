@@ -5,6 +5,7 @@ from typing import Any, Protocol
 
 from decision_support.service import generate_decision_support
 from src.logging_utils import get_logger
+from .alerting_service import AlertingService
 from .dtos import CoverageRecordDTO, DecisionSupportInputsDTO, DetectorRecordDTO, EvidenceRecordDTO, IncidentRecordDTO, PolicyRecordDTO
 
 logger = get_logger(__name__)
@@ -22,6 +23,7 @@ class RepositoryBundle(Protocol):
 @dataclass
 class DecisionSupportAppService:
     repositories: RepositoryBundle
+    alerting_service: AlertingService | None = None
 
     def generate_for_incident(self, incident_id: str, policy_version: str | None = None) -> dict[str, Any]:
         logger.info("Generating decision support incident_id=%s policy_version=%s", incident_id, policy_version)
@@ -51,6 +53,18 @@ class DecisionSupportAppService:
         result = generate_decision_support(**inputs)
         self.repositories.save_decision_support_result(incident_id, result, policy_record["policy_version"])
         logger.info("Decision support saved incident_id=%s policy_version=%s", incident_id, policy_record["policy_version"])
+        if self.alerting_service is not None:
+            try:
+                alert_result = self.alerting_service.maybe_send_high_priority_alert(incident_record, result)
+                logger.info(
+                    "Alerting evaluated incident_id=%s attempted=%s sent_count=%s skipped_count=%s",
+                    incident_id,
+                    alert_result.get("attempted"),
+                    alert_result.get("sent_count", 0),
+                    alert_result.get("skipped_count", 0),
+                )
+            except Exception:
+                logger.exception("High-priority alerting failed incident_id=%s", incident_id)
         return result
 
 

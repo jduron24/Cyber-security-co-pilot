@@ -66,10 +66,21 @@ class FakeBundle:
         self.saved = (incident_id, result, policy_version)
 
 
+class FakeAlertingService:
+    def __init__(self):
+        self.calls = []
+
+    def maybe_send_high_priority_alert(self, incident_record: dict, decision_support_result: dict):
+        self.calls.append((incident_record, decision_support_result))
+        return {"attempted": False, "reason": "test"}
+
+
 def test_app_service_generates_and_persists_result():
     bundle = FakeBundle()
-    service = DecisionSupportAppService(bundle)
+    alerting = FakeAlertingService()
+    service = DecisionSupportAppService(bundle, alerting_service=alerting)
     result = service.generate_for_incident("INC-DB-1")
     assert result["decision_support_result"]["incident_id"] == "INC-DB-1"
     assert bundle.saved is not None
     assert bundle.saved[2] == "v1"
+    assert len(alerting.calls) == 1

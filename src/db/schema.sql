@@ -108,3 +108,19 @@ CREATE TABLE IF NOT EXISTS decision_review_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_decision_review_events_incident_id ON decision_review_events(incident_id);
+
+CREATE TABLE IF NOT EXISTS incident_notifications (
+    incident_notification_id BIGSERIAL PRIMARY KEY,
+    incident_id TEXT NOT NULL REFERENCES incidents(incident_id) ON DELETE CASCADE,
+    channel TEXT NOT NULL,
+    alert_type TEXT NOT NULL,
+    recipient TEXT NOT NULL,
+    dedupe_key TEXT NOT NULL UNIQUE,
+    status TEXT NOT NULL,
+    provider_message_id TEXT,
+    payload_json JSONB NOT NULL,
+    sent_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_incident_notifications_incident_id ON incident_notifications(incident_id);
