@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import shutil
 from typing import Any
 
 import pandas as pd
@@ -35,14 +36,24 @@ def run_demo_pipeline(
     stream_records_root = stream_root / "records"
     processed_root = output_root / "processed"
     reports_root = output_root / "reports"
+    if stream_root.exists():
+        shutil.rmtree(stream_root)
+    if processed_root.exists():
+        shutil.rmtree(processed_root)
+    if reports_root.exists():
+        shutil.rmtree(reports_root)
     processed_root.mkdir(parents=True, exist_ok=True)
     reports_root.mkdir(parents=True, exist_ok=True)
     logger.info("Starting demo pipeline project_root=%s output_root=%s", root, output_root)
 
     scenarios = build_demo_scenarios()
-    stream_manifest = write_demo_stream(stream_records_root, scenarios=scenarios, batch_size=batch_size)
+    stream_manifest = write_demo_stream(
+        stream_records_root,
+        scenarios=scenarios,
+        batch_size=batch_size,
+        manifest_path=stream_root / "demo_manifest.json",
+    )
     logger.info("Demo stream generated scenarios=%s batches=%s", len(scenarios), len(stream_manifest["batches"]))
-    (stream_root / "demo_manifest.json").write_text(json.dumps(stream_manifest, indent=2), encoding="utf-8")
 
     raw_records, ingest_metrics = ingest_records(stream_records_root)
     normalized = normalize_records(raw_records)
@@ -108,6 +119,73 @@ def run_demo_pipeline(
             },
             decision_support_result=decision_support,
         )
+        initial_review = {
+            "detector_output": detector_output,
+            "decision_support": decision_support,
+            "coverage_review": coverage_review,
+        }
+
+        double_check_review = None
+        decision_changed = False
+        if scenario.double_check_plan:
+            logger.info("Processing demo double-check scenario scenario_id=%s", scenario.scenario_id)
+            double_check_detector_output = _apply_double_check_detector_overrides(detector_output, scenario.double_check_plan)
+            double_check_coverage = _apply_double_check_coverage_overrides(coverage, scenario.double_check_plan)
+            double_check_decision_support = generate_decision_support(
+                incident=_build_incident_input(incident_row, scenario),
+                detector_output=double_check_detector_output,
+                coverage=double_check_coverage,
+                policy=policy,
+                knowledge_context={
+                    "playbook_snippets": [scenario.title, scenario.purpose, str(scenario.double_check_plan.get("summary") or "")],
+                    "domain_terms": [{"title": pattern} for pattern in double_check_detector_output.get("retrieved_patterns", [])],
+                },
+                operator_context={"operator_type": "non_expert", "review_mode": "double_check"},
+            )
+            double_check_coverage_review = build_coverage_review(
+                incident_record={
+                    "incident_id": incident_row["incident_id"],
+                    "title": scenario.title,
+                    "summary": scenario.purpose,
+                    "primary_actor": {"actor_key": incident_row["actor_key"]},
+                    "entities": {"primary_source_ip_address": incident_row["primary_source_ip_address"]},
+                    "event_sequence": str(incident_row["ordered_event_name_sequence"]).split("|"),
+                },
+                evidence_record={
+                    "summary_json": {
+                        "title": scenario.title,
+                        "summary": scenario.purpose,
+                        "event_sequence": str(incident_row["ordered_event_name_sequence"]).split("|"),
+                        "operator_context": {"operator_type": "non_expert", "review_mode": "double_check"},
+                        "double_check_summary": scenario.double_check_plan.get("summary"),
+                    }
+                },
+                detector_record={
+                    "risk_score": double_check_detector_output["risk_score"],
+                    "risk_band": double_check_detector_output["risk_band"],
+                    "top_signals_json": double_check_detector_output["top_signals"],
+                    "counter_signals_json": double_check_detector_output["counter_signals"],
+                },
+                coverage_record={
+                    "completeness_level": double_check_coverage["completeness_level"],
+                    "incompleteness_reasons_json": double_check_coverage["incompleteness_reasons"],
+                    "checks_json": double_check_coverage["checks"],
+                    "missing_sources_json": double_check_coverage["missing_sources"],
+                },
+                decision_support_result=double_check_decision_support,
+            )
+            decision_changed = (
+                decision_support["decision_support_result"]["recommended_action"]["action_id"]
+                != double_check_decision_support["decision_support_result"]["recommended_action"]["action_id"]
+            )
+            double_check_review = {
+                "summary": scenario.double_check_plan.get("summary"),
+                "expected_recommendation": scenario.double_check_plan.get("expected_recommendation"),
+                "decision_changed": decision_changed,
+                "detector_output": double_check_detector_output,
+                "decision_support": double_check_decision_support,
+                "coverage_review": double_check_coverage_review,
+            }
         scenario_outputs.append(
             {
                 "scenario_id": scenario.scenario_id,
@@ -116,9 +194,9 @@ def run_demo_pipeline(
                 "expected_recommendation": scenario.expected_recommendation,
                 "expected_blind_spot": scenario.expected_blind_spot,
                 "expected_operator_move": scenario.expected_operator_move,
-                "detector_output": detector_output,
-                "decision_support": decision_support,
-                "coverage_review": coverage_review,
+                "decision_changed_after_double_check": decision_changed,
+                "initial_review": initial_review,
+                "double_check_review": double_check_review,
             }
         )
         logger.debug("Scenario output assembled scenario_id=%s incident_id=%s", scenario.scenario_id, incident_row["incident_id"])
@@ -213,6 +291,33 @@ def _build_coverage_from_scenario(scenario: DemoScenario) -> dict[str, Any]:
         "checks": list(plan.get("checks") or []),
         "missing_sources": list(plan.get("missing_sources") or []),
     }
+
+
+def _apply_double_check_detector_overrides(detector_output: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    overrides = dict(plan.get("detector_output_overrides") or {})
+    merged = {
+        "risk_score": detector_output["risk_score"],
+        "risk_band": detector_output["risk_band"],
+        "top_signals": list(detector_output.get("top_signals") or []),
+        "counter_signals": list(detector_output.get("counter_signals") or []),
+        "detector_labels": list(detector_output.get("detector_labels") or []),
+        "retrieved_patterns": list(detector_output.get("retrieved_patterns") or []),
+        "data_sources_used": list(detector_output.get("data_sources_used") or []),
+    }
+    merged.update(overrides)
+    return merged
+
+
+def _apply_double_check_coverage_overrides(coverage: dict[str, Any], plan: dict[str, Any]) -> dict[str, Any]:
+    overrides = dict(plan.get("coverage_overrides") or {})
+    merged = {
+        "completeness_level": coverage["completeness_level"],
+        "incompleteness_reasons": list(coverage.get("incompleteness_reasons") or []),
+        "checks": list(coverage.get("checks") or []),
+        "missing_sources": list(coverage.get("missing_sources") or []),
+    }
+    merged.update(overrides)
+    return merged
 
 
 def _pattern_titles(incident_row: pd.Series, weak_reasons: list[dict[str, Any]]) -> list[str]:

@@ -29,6 +29,10 @@ function getServerCommand() {
   return {
     command: npmCmd,
     args: ["run", "--silent", "dev"],
+    env: {
+      ...process.env,
+    },
+    stderr: "inherit" as const,
   };
 }
 

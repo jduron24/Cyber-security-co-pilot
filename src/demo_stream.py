@@ -24,6 +24,7 @@ class DemoScenario:
     source_ip_hint: str | None = None
     actor_hint: str | None = None
     coverage_plan: dict[str, Any] = field(default_factory=dict)
+    double_check_plan: dict[str, Any] = field(default_factory=dict)
     records: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -69,6 +70,7 @@ def write_demo_stream(
     output_dir: str | Path,
     scenarios: list[DemoScenario] | None = None,
     batch_size: int = 1,
+    manifest_path: str | Path | None = None,
 ) -> dict[str, Any]:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
@@ -94,13 +96,16 @@ def write_demo_stream(
                 "source_ip_hint": scenario.source_ip_hint,
                 "actor_hint": scenario.actor_hint,
                 "coverage_plan": scenario.coverage_plan,
+                "double_check_plan": scenario.double_check_plan,
                 "record_count": len(scenario.records),
             }
             for scenario in scenarios
         ],
         "batches": [asdict(batch) for batch in batches],
     }
-    (output_path / "demo_manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    resolved_manifest_path = Path(manifest_path) if manifest_path is not None else (output_path / "demo_manifest.json")
+    resolved_manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved_manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 
 
@@ -144,6 +149,45 @@ def _scenario_incomplete_unusual_login(base_time: datetime) -> DemoScenario:
             ],
             "missing_sources": ["network_logs"],
             "incompleteness_reasons": ["Network telemetry was not checked."],
+        },
+        double_check_plan={
+            "summary": "Double check loads network telemetry and shows the session is still active across additional infrastructure.",
+            "expected_recommendation": "temporary_access_lock",
+            "decision_changed": True,
+            "detector_output_overrides": {
+                "risk_score": 0.97,
+                "risk_band": "high",
+                "top_signals": [
+                    {"label": "suspicious_console_login", "weight": 1.2},
+                    {"label": "active_network_beaconing", "weight": 2.4},
+                    {"label": "resource_creation_after_login", "weight": 1.8},
+                ],
+                "detector_labels": [
+                    "suspicious_console_login",
+                    "active_network_beaconing",
+                    "ongoing_session_activity",
+                ],
+                "retrieved_patterns": [
+                    "Active network session after suspicious login",
+                    "Resource creation after sensitive activity",
+                ],
+                "data_sources_used": [
+                    "demo_stream",
+                    "incident_builder",
+                    "weak_label_rules",
+                    "network_logs",
+                ],
+            },
+            "coverage_overrides": {
+                "completeness_level": "high",
+                "checks": [
+                    {"name": "login_activity", "status": "checked_signal_found"},
+                    {"name": "identity_changes", "status": "checked_signal_found"},
+                    {"name": "network_logs", "status": "checked_signal_found"},
+                ],
+                "missing_sources": [],
+                "incompleteness_reasons": [],
+            },
         },
         records=records,
     )

@@ -21,7 +21,9 @@ Respond with a single JSON object on every turn using this schema:
 }
 
 Rules:
-- Use at least one tool before finishing.
+- You must call `load_incident` before finishing.
+- You must use at least one additional context tool before finishing. Prefer `load_decision_support`, `load_detector_result`, or `load_coverage_assessment` depending on the question.
+- If `load_mcp_cyber_context` is available and the operator asks for ATT&CK, threat, mitigation, cyber, or technique context, you must use it before finishing.
 - Keep thoughts short and operational.
 - When you have enough evidence, set action to "finish" and provide the operator-facing answer in final_answer.
 - Do not wrap the JSON in markdown fences."""
@@ -50,7 +52,7 @@ def build_react_messages(
                 f"Operator request: {user_query}\n\n"
                 "Available tools:\n"
                 f"{json.dumps(tool_specs, indent=2)}\n\n"
-                "Start by choosing the most relevant tool."
+                "Start by choosing a tool. In most cases call `load_incident` first."
             ),
         },
     ]
@@ -93,7 +95,7 @@ def build_observation_message(tool_name: str, observation: dict[str, Any]) -> st
 def build_correction_message(reason: str) -> str:
     return (
         f"Your last step could not be accepted: {reason}\n"
-        "Return the next JSON step. Use a tool if you do not yet have enough grounded evidence to finish."
+        "Return the next JSON step. Do not finish yet. Use a tool call next, starting with `load_incident` if it has not been called."
     )
 
 

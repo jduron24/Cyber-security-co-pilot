@@ -65,6 +65,11 @@ class McpCyberContextClient:
             "--limit",
             str(limit),
         ]
+        child_env = os.environ.copy()
+        if self.env:
+            child_env.update({key: str(value) for key, value in self.env.items() if value is not None})
+        if child_env.get("POSTGRES_DSN") and not child_env.get("DATABASE_URL"):
+            child_env["DATABASE_URL"] = child_env["POSTGRES_DSN"]
         logger.info("Querying MCP cyber context query=%s limit=%s", query, limit)
         completed = subprocess.run(
             command,
@@ -73,7 +78,7 @@ class McpCyberContextClient:
             text=True,
             timeout=30,
             check=False,
-            env=os.environ.copy(),
+            env=child_env,
         )
         if completed.returncode != 0:
             raise McpClientError((completed.stderr or completed.stdout or "MCP tool call failed.").strip())

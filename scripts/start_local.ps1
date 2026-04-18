@@ -132,6 +132,76 @@ function Start-LoggedProcess {
         -PassThru
 }
 
+function Get-ListeningProcessIdsForPort {
+    param([int]$Port)
+
+    $processIds = @()
+
+    $getNetTcpCommand = Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue
+    if ($null -ne $getNetTcpCommand) {
+        $processIds = Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty OwningProcess -Unique
+    }
+    else {
+        $processIds = netstat -ano -p tcp |
+            Select-String "LISTENING" |
+            ForEach-Object {
+                $line = ($_ -replace "\s+", " ").Trim()
+                $parts = $line.Split(" ")
+                if ($parts.Length -lt 5) {
+                    return
+                }
+                $localAddress = $parts[1]
+                $pid = $parts[-1]
+                if ($localAddress -match ":(\d+)$" -and [int]$Matches[1] -eq $Port) {
+                    $pid
+                }
+            } |
+            Select-Object -Unique
+    }
+
+    return @($processIds | Where-Object { $_ })
+}
+
+function Stop-StaleListeners {
+    param(
+        [int[]]$Ports,
+        [switch]$DryRun
+    )
+
+    $stopped = @()
+
+    foreach ($port in $Ports | Select-Object -Unique) {
+        $processIds = Get-ListeningProcessIdsForPort -Port $port
+        foreach ($processId in $processIds) {
+            $process = Get-Process -Id $processId -ErrorAction SilentlyContinue
+            if ($null -eq $process) {
+                continue
+            }
+
+            if ($DryRun) {
+                $stopped += [ordered]@{
+                    port = $port
+                    pid = $processId
+                    process_name = $process.ProcessName
+                    action = "would_stop"
+                }
+                continue
+            }
+
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+            $stopped += [ordered]@{
+                port = $port
+                pid = $processId
+                process_name = $process.ProcessName
+                action = "stopped"
+            }
+        }
+    }
+
+    return @($stopped)
+}
+
 function Wait-ForBackend {
     param(
         [string]$Url,
@@ -178,6 +248,7 @@ if (-not $DryRun) {
 }
 
 $services = @()
+$staleListeners = Stop-StaleListeners -Ports @($BackendPort, $AgentPort) -DryRun:$DryRun
 
 $backendStdOut = Join-Path $logRoot "backend.stdout.log"
 $backendStdErr = Join-Path $logRoot "backend.stderr.log"
@@ -306,6 +377,7 @@ if ($IncludeMcpServer) {
 $state = [ordered]@{
     started_at = (Get-Date).ToString("o")
     repo_root = $repoRoot
+    stale_listeners = $staleListeners
     services = $services
 }
 
