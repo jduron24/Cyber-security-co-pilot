@@ -54,6 +54,12 @@ python -c "from src.decision_support_bridge import generate_decision_support_for
 
 To use the Postgres-ready application layer, create the schema from [`src/db/schema.sql`](C:/Users/ejtal/Downloads/judgment_drift/Cyber-security-co-pilot/src/db/schema.sql), store incident context, evidence packages, detector results, coverage assessments, and policy snapshots, then call the app service around the pure `decision_support` package.
 
+To run the FastAPI backend as the HTTP wrapper around the shared service layer:
+
+```bash
+uvicorn backend.main:app --reload
+```
+
 To build the operator-facing coverage review object that emphasizes blind spots and double-check paths:
 
 ```bash

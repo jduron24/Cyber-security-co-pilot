@@ -1,59 +1,25 @@
-import os
-import re
-import psycopg2
-import psycopg2.extras
-from fastapi import FastAPI, Query
-from dotenv import load_dotenv
+from __future__ import annotations
 
-load_dotenv()
+from fastapi import FastAPI
 
-app = FastAPI()
-DB_URL = os.getenv("DATABASE_URL", "postgresql://jonathanduron@localhost:5432/cyber_copilot")
+from src.logging_utils import configure_logging
 
-
-def get_conn():
-    return psycopg2.connect(DB_URL)
+from .api.agent import router as agent_router
+from .api.health import router as health_router
+from .api.incidents import router as incidents_router
+from .api.operator_actions import router as operator_actions_router
+from .api.search import router as search_router
 
 
-def normalize_query(text: str) -> str:
-    text = re.sub(r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b', '', text)
-    text = re.sub(r':\d{2,5}\b', '', text)
-    text = re.sub(r'\d{4}-\d{2}-\d{2}T[\d:Z.]+', '', text)
-    tokens = [w for w in text.strip().split() if len(w) > 3]
-    return ' & '.join(tokens)
+def create_app() -> FastAPI:
+    configure_logging()
+    app = FastAPI(title="Cyber Co-Pilot API")
+    app.include_router(health_router)
+    app.include_router(search_router)
+    app.include_router(incidents_router)
+    app.include_router(operator_actions_router)
+    app.include_router(agent_router)
+    return app
 
 
-def search_kb(query: str, limit: int = 5) -> list:
-    tsquery = normalize_query(query)
-    if not tsquery:
-        return []
-    conn = get_conn()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT title, content, entry_type, kd.name AS domain,
-               ts_rank(ke.search_vector, to_tsquery('english', %s)) AS score
-        FROM knowledge_entries ke
-        LEFT JOIN knowledge_domains kd ON ke.domain_id = kd.id
-        WHERE ke.search_vector @@ to_tsquery('english', %s)
-        ORDER BY score DESC
-        LIMIT %s
-    """, (tsquery, tsquery, limit))
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return [dict(r) for r in rows]
-
-
-@app.get("/")
-def root():
-    return {"message": "Hello from Cyber Co-Pilot API"}
-
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-@app.get("/search")
-def search(q: str = Query(...), limit: int = 5):
-    return {"results": search_kb(q, limit)}
+app = create_app()

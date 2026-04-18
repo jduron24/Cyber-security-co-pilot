@@ -3,7 +3,7 @@
 ## 1. Create and activate virtual environment
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+. .venv/bin/activate
 ```
 
 ## 2. Install dependencies
@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ## 3. Configure environment
 Edit `.env` and set your database URL:
 ```
-DATABASE_URL=postgresql://jonathanduron@localhost:5432/cyber_copilot
+POSTGRES_DSN=postgresql://jonathanduron@localhost:5432/cyber_copilot
 ```
 
 ## 4. Start PostgreSQL
@@ -24,7 +24,10 @@ brew services start postgresql@15
 
 ## 5. Set up the database (first time only)
 ```bash
-# Create tables
+# Create the main application tables
+psql -U jonathanduron -d cyber_copilot -f ../src/db/schema.sql
+
+# Create the knowledge-base tables
 psql -U jonathanduron -d cyber_copilot -f schema.sql
 
 # Add full-text search index
@@ -36,7 +39,7 @@ python ingest_attack.py
 
 ## 6. Start the API
 ```bash
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 ```
 
 API runs at: http://localhost:8000
@@ -48,6 +51,14 @@ Docs at:     http://localhost:8000/docs
 | GET    | /         | Health check                       |
 | GET    | /health   | Status check                       |
 | GET    | /search   | Search MITRE KB by keyword         |
+| GET    | /incidents/{id} | Load stored incident context  |
+| GET    | /incidents/{id}/decision-support | Generate or fetch decision support |
+| GET    | /incidents/{id}/coverage-review | Build operator-facing coverage review |
+| POST   | /incidents/{id}/approve | Record recommendation approval |
+| POST   | /incidents/{id}/alternative | Record alternative choice |
+| POST   | /incidents/{id}/escalate | Record escalation |
+| POST   | /incidents/{id}/double-check | Record request for more analysis |
+| POST   | /incidents/{id}/agent-query | Run the grounded incident agent |
 
 ### Example search
 ```bash

@@ -1,18 +1,25 @@
 import json
-import psycopg2
 import os
+from pathlib import Path
+
 from dotenv import load_dotenv
 
+from src.db.connection import create_connection, load_postgres_config
+from src.logging_utils import configure_logging, get_logger
+
 load_dotenv()
+configure_logging()
+logger = get_logger(__name__)
 
-DB_URL = os.getenv("DATABASE_URL", "postgresql://localhost/cyber_copilot")
-
-conn = psycopg2.connect(DB_URL)
+env = dict(os.environ)
+if env.get("DATABASE_URL") and not env.get("POSTGRES_DSN"):
+    env["POSTGRES_DSN"] = env["DATABASE_URL"]
+conn = create_connection(load_postgres_config(env))
 cur = conn.cursor()
 
-DATA_PATH = os.path.join(os.path.dirname(__file__), "../data/enterprise.json")
+DATA_PATH = Path(__file__).resolve().parents[1] / "data" / "enterprise.json"
 
-with open(DATA_PATH) as f:
+with DATA_PATH.open("r", encoding="utf-8") as f:
     bundle = json.load(f)
 
 tactics_inserted = 0
@@ -51,4 +58,5 @@ conn.commit()
 cur.close()
 conn.close()
 
-print(f"Done — {tactics_inserted} tactics, {techniques_inserted} techniques loaded into knowledge_entries")
+logger.info("Knowledge base ingest complete tactics=%s techniques=%s", tactics_inserted, techniques_inserted)
+print(f"Done - {tactics_inserted} tactics, {techniques_inserted} techniques loaded into knowledge_entries")
