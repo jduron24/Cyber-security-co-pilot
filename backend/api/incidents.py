@@ -35,6 +35,7 @@ def get_incident_context(
         raise HTTPException(status_code=404, detail=f"Incident not found: {incident_id}")
     return IncidentContextResponse(
         incident=incident,
+        incident_events=repositories.fetch_incident_events(incident_id, limit=50),
         evidence_package=repositories.fetch_latest_evidence_package(incident_id),
         detector_result=repositories.fetch_latest_detector_result(incident_id),
         coverage_assessment=repositories.fetch_latest_coverage_assessment(incident_id),

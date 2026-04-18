@@ -6,6 +6,7 @@ export interface IncidentListResponse {
 
 export interface IncidentContextResponse {
   incident: RecordShape;
+  incident_events?: RecordShape[];
   evidence_package?: RecordShape | null;
   detector_result?: RecordShape | null;
   coverage_assessment?: RecordShape | null;
@@ -40,6 +41,7 @@ export interface AgentQueryResponse {
 
 export interface IncidentWorkspaceResponse {
   incident: RecordShape;
+  incidentEvents: RecordShape[];
   evidencePackage: RecordShape | null;
   detectorResult: RecordShape | null;
   coverageAssessment: RecordShape | null;

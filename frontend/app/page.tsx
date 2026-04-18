@@ -26,6 +26,7 @@ export default function Home() {
   const [queueError, setQueueError] = useState<string | null>(null);
   const [selectedIncidentId, setSelectedIncidentId] = useState<string>(fallbackQueue[0].id);
   const [incident, setIncident] = useState<RecordShape | null>(null);
+  const [incidentEvents, setIncidentEvents] = useState<RecordShape[]>([]);
   const [evidencePackage, setEvidencePackage] = useState<RecordShape | null>(null);
   const [detectorResult, setDetectorResult] = useState<RecordShape | null>(null);
   const [coverageAssessment, setCoverageAssessment] = useState<RecordShape | null>(null);
@@ -66,6 +67,7 @@ export default function Home() {
       hasOperatorHistory: Boolean(result.operatorHistory),
     });
     setIncident(result.incident);
+    setIncidentEvents(result.incidentEvents);
     setEvidencePackage(result.evidencePackage);
     setDetectorResult(result.detectorResult);
     setCoverageAssessment(result.coverageAssessment);
@@ -123,6 +125,7 @@ export default function Home() {
         console.error("[frontend/page] load_details_failed", { selectedIncidentId, error });
         setIncidentError(error instanceof ApiError ? error.message : "Could not load incident details.");
         setIncident(null);
+        setIncidentEvents([]);
         setEvidencePackage(null);
         setDetectorResult(null);
         setCoverageAssessment(null);
@@ -313,6 +316,7 @@ export default function Home() {
           {selectedView === "active" ? (
             <ActiveIncidentView
               viewModel={viewModel}
+              rawLogs={incidentEvents}
               viewMode={viewMode}
               incidentLoading={incidentLoading}
               incidentError={incidentError}

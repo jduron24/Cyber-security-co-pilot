@@ -53,6 +53,15 @@ describe("view-model helpers", () => {
         risk_band: "high",
         detector_labels_json: ["privilege_change"],
         data_sources_used_json: ["demo_stream", "network_logs"],
+        model_type: "ebm",
+        feature_contributions_json: [
+          {
+            feature: "failure_ratio",
+            contribution: 0.34,
+            direction: "increases suspicion",
+            plain_language: "A high failure ratio increased suspicion.",
+          },
+        ],
       },
       {
         completeness_level: "medium",
@@ -108,6 +117,9 @@ describe("view-model helpers", () => {
     expect(model.recommendationMayBeIncomplete).toBe(true);
     expect(model.cyberAuditEntries[0].title).toContain("Evidence package");
     expect(model.cyberAuditEntries[1].title).toContain("Detector scored high risk");
+    expect(model.cyberAuditEntries[2].title).toContain("Model explanation from EBM");
+    expect(model.modelType).toBe("ebm");
+    expect(model.modelContributions[0].plainLanguage).toBe("A high failure ratio increased suspicion.");
     expect(model.latestDecision?.title).toContain("Human decision recorded");
     expect(model.latestDecision?.rationale).toBe("The credential reset is the fastest containment step.");
     expect(model.latestDecision?.recordedAt).toBe("2025-01-01T00:05:00Z");

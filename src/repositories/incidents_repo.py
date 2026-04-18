@@ -48,6 +48,17 @@ class IncidentsRepository:
         """
         return _fetch_one(self._connection_factory, query, (incident_id,), context=f"incident_id={incident_id}")
 
+    def fetch_incident_events(self, incident_id: str, limit: int = 50) -> list[dict[str, Any]]:
+        logger.debug("Fetching incident events incident_id=%s limit=%s", incident_id, limit)
+        query = """
+        SELECT incident_id, event_id, event_time, event_name, event_source, event_index, event_payload
+        FROM incident_events
+        WHERE incident_id = %s
+        ORDER BY event_index ASC, event_time ASC NULLS LAST, event_id ASC
+        LIMIT %s
+        """
+        return _fetch_all(self._connection_factory, query, (incident_id, limit), context=f"incident_id={incident_id} limit={limit}")
+
 
 def _fetch_one(connection_factory: Callable[[], Any], query: str, params: tuple[Any, ...], context: str | None = None) -> dict[str, Any] | None:
     with connection_factory() as conn:
