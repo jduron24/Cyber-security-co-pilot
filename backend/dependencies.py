@@ -57,6 +57,10 @@ def get_operator_decision_service() -> OperatorDecisionAppService:
     return OperatorDecisionAppService(repositories=repos, coverage_review_service=coverage_review_service)
 
 
+def get_operator_decision_repositories() -> OperatorDecisionRepositoryBundle:
+    return OperatorDecisionRepositoryBundle.from_connection_factory(get_connection_factory())
+
+
 def get_coverage_review_repositories() -> CoverageReviewRepositoryBundle:
     return CoverageReviewRepositoryBundle.from_connection_factory(get_connection_factory())
 

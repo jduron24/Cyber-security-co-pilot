@@ -19,3 +19,28 @@ export interface DecisionSupportResponse {
 export interface CoverageReviewResponse {
   review: RecordShape;
 }
+
+export interface OperatorActionResponse {
+  result: RecordShape;
+}
+
+export interface OperatorHistoryResponse {
+  latest_decision: RecordShape | null;
+  recent_decisions: RecordShape[];
+  review_events: RecordShape[];
+}
+
+export interface AgentAuthResponse {
+  result: RecordShape;
+}
+
+export interface AgentQueryResponse {
+  result: RecordShape;
+}
+
+export interface IncidentWorkspaceResponse {
+  incident: RecordShape;
+  decisionSupport: RecordShape | null;
+  coverageReview: RecordShape | null;
+  operatorHistory: OperatorHistoryResponse | null;
+}

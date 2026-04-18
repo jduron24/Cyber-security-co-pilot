@@ -2,11 +2,24 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from backend.dependencies import as_http_exception, get_operator_decision_service
-from backend.models import AlternativeActionRequest, OperatorActionRequest, OperatorActionResponse
+from backend.dependencies import as_http_exception, get_operator_decision_repositories, get_operator_decision_service
+from backend.models import AlternativeActionRequest, OperatorActionRequest, OperatorActionResponse, OperatorHistoryResponse
+from src.repositories.service_bundles import OperatorDecisionRepositoryBundle
 from src.services.operator_decision_service import OperatorDecisionAppService
 
 router = APIRouter(prefix="/incidents/{incident_id}", tags=["operator-actions"])
+
+
+@router.get("/operator-history", response_model=OperatorHistoryResponse)
+def get_operator_history(
+    incident_id: str,
+    repositories: OperatorDecisionRepositoryBundle = Depends(get_operator_decision_repositories),
+) -> OperatorHistoryResponse:
+    return OperatorHistoryResponse(
+        latest_decision=repositories.fetch_latest_operator_decision(incident_id),
+        recent_decisions=repositories.fetch_recent_operator_decisions(incident_id, limit=10),
+        review_events=repositories.fetch_recent_review_events(incident_id, limit=10),
+    )
 
 
 @router.post("/approve", response_model=OperatorActionResponse)

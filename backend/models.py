@@ -63,3 +63,9 @@ class AlternativeActionRequest(OperatorActionRequest):
 
 class OperatorActionResponse(BaseModel):
     result: dict[str, Any]
+
+
+class OperatorHistoryResponse(BaseModel):
+    latest_decision: dict[str, Any] | None = None
+    recent_decisions: list[dict[str, Any]]
+    review_events: list[dict[str, Any]]

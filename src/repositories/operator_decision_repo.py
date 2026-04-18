@@ -89,3 +89,34 @@ class OperatorDecisionRepository:
                 row = cur.fetchone()
                 logger.debug("Operator decision query finished incident_id=%s found=%s", incident_id, row is not None)
                 return dict(row) if row is not None else None
+
+    def fetch_recent_operator_decisions(self, incident_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        logger.debug("Fetching recent operator decisions incident_id=%s limit=%s", incident_id, limit)
+        query = """
+        SELECT incident_id, decision_type, selected_from, chosen_action_id, chosen_action_label, rationale,
+               used_double_check, actor_json, coverage_review_json, decision_support_result_json, created_at
+        FROM operator_decisions
+        WHERE incident_id = %s
+        ORDER BY created_at DESC, operator_decision_id DESC
+        LIMIT %s
+        """
+        with self._connection_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (incident_id, limit))
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]
+
+    def fetch_recent_review_events(self, incident_id: str, limit: int = 10) -> list[dict[str, Any]]:
+        logger.debug("Fetching recent review events incident_id=%s limit=%s", incident_id, limit)
+        query = """
+        SELECT incident_id, event_type, actor_json, payload_json, created_at
+        FROM decision_review_events
+        WHERE incident_id = %s
+        ORDER BY created_at DESC, decision_review_event_id DESC
+        LIMIT %s
+        """
+        with self._connection_factory() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, (incident_id, limit))
+                rows = cur.fetchall()
+                return [dict(row) for row in rows]

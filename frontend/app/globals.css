@@ -270,6 +270,25 @@ button:hover {
   padding: 12px 14px;
 }
 
+.warning-banner {
+  display: grid;
+  gap: 6px;
+}
+
+.warning-banner--critical {
+  border-color: rgba(215, 155, 40, 0.28);
+  background: rgba(215, 155, 40, 0.14);
+  color: #785400;
+}
+
+.success-banner {
+  border-radius: 18px;
+  border: 1px solid rgba(47, 125, 99, 0.18);
+  background: rgba(47, 125, 99, 0.1);
+  color: #1f624d;
+  padding: 12px 14px;
+}
+
 .card h3 {
   font-size: 1.5rem;
   line-height: 1.16;
@@ -321,6 +340,13 @@ button:hover {
 
 .action-stack {
   margin-top: 22px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
 }
 
 .cta {
@@ -416,6 +442,23 @@ button:hover {
   gap: 18px;
 }
 
+.timeline-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.timeline-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  font-size: 0.88rem;
+}
+
 .timeline-row {
   display: grid;
   grid-template-columns: 18px 1fr;
@@ -457,11 +500,81 @@ button:hover {
   gap: 18px;
 }
 
+.decision-item--selectable {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.decision-item--selected {
+  border-color: rgba(47, 125, 99, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(47, 125, 99, 0.18);
+}
+
 .decision-button {
   min-width: 88px;
   min-height: 44px;
   border-radius: 16px;
   cursor: pointer;
+}
+
+.field-label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.text-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(18, 32, 51, 0.12);
+  background: rgba(255, 255, 255, 0.76);
+  color: #173045;
+  font: inherit;
+}
+
+textarea.text-input {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.latest-decision {
+  border-radius: 16px;
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.55);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.detail-list {
+  margin-top: 18px;
+}
+
+.detail-list ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.detail-list li + li {
+  margin-top: 8px;
+}
+
+.agent-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.agent-answer {
+  margin-top: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(18, 32, 51, 0.08);
+  background: rgba(255, 255, 255, 0.55);
+  padding: 14px;
 }
 
 .audit-grid {
@@ -588,6 +701,11 @@ button:hover {
   }
 
   .debug-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-grid,
+  .agent-row {
     grid-template-columns: 1fr;
   }
 }

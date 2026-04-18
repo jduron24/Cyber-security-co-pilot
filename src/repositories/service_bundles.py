@@ -103,6 +103,12 @@ class OperatorDecisionRepositoryBundle:
     def fetch_latest_operator_decision(self, incident_id: str):
         return self.operator_decision_repo.fetch_latest_operator_decision(incident_id)
 
+    def fetch_recent_operator_decisions(self, incident_id: str, limit: int = 10):
+        return self.operator_decision_repo.fetch_recent_operator_decisions(incident_id, limit)
+
+    def fetch_recent_review_events(self, incident_id: str, limit: int = 10):
+        return self.operator_decision_repo.fetch_recent_review_events(incident_id, limit)
+
 
 @dataclass
 class AgentRepositoryBundle:

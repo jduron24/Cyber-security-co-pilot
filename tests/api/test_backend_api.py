@@ -74,6 +74,17 @@ class FakeOperatorDecisionService:
         return {"incident_id": incident_id, "decision_type": "request_more_analysis"}
 
 
+class FakeOperatorDecisionRepositories:
+    def fetch_latest_operator_decision(self, incident_id: str):
+        return {"incident_id": incident_id, "decision_type": "approve_recommendation"}
+
+    def fetch_recent_operator_decisions(self, incident_id: str, limit: int = 10):
+        return [{"incident_id": incident_id, "decision_type": "approve_recommendation"}]
+
+    def fetch_recent_review_events(self, incident_id: str, limit: int = 10):
+        return [{"incident_id": incident_id, "event_type": "double_check_requested"}]
+
+
 def test_backend_health_and_search_routes(monkeypatch):
     app.dependency_overrides[get_knowledge_base_repository] = lambda: FakeKnowledgeBaseRepository()
     client = TestClient(app)
@@ -113,6 +124,9 @@ def test_backend_incident_routes(monkeypatch):
 
 def test_backend_operator_routes():
     app.dependency_overrides[get_operator_decision_service] = lambda: FakeOperatorDecisionService()
+    from backend.dependencies import get_operator_decision_repositories
+
+    app.dependency_overrides[get_operator_decision_repositories] = lambda: FakeOperatorDecisionRepositories()
     client = TestClient(app)
 
     approve_response = client.post("/incidents/incident-1/approve", json={"rationale": "Looks valid"})
@@ -122,5 +136,10 @@ def test_backend_operator_routes():
     alt_response = client.post("/incidents/incident-1/alternative", json={"action_id": "escalate_to_expert"})
     assert alt_response.status_code == 200
     assert alt_response.json()["result"]["decision_type"] == "choose_alternative"
+
+    history_response = client.get("/incidents/incident-1/operator-history")
+    assert history_response.status_code == 200
+    assert history_response.json()["latest_decision"]["decision_type"] == "approve_recommendation"
+    assert history_response.json()["review_events"][0]["event_type"] == "double_check_requested"
 
     app.dependency_overrides.clear()
