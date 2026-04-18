@@ -21,6 +21,24 @@ class IncidentsRepository:
         """
         return _fetch_all(self._connection_factory, query, (limit,), context=f"limit={limit}")
 
+    def list_recent_high_severity_incidents(self, lookback_hours: int = 1, limit: int = 100) -> list[dict[str, Any]]:
+        logger.debug("Listing recent high-severity incidents lookback_hours=%s limit=%s", lookback_hours, limit)
+        query = """
+        SELECT incident_id, title, summary, severity_hint, start_time, end_time,
+               primary_actor, entities, event_sequence, created_at, updated_at
+        FROM incidents
+        WHERE LOWER(COALESCE(severity_hint, '')) = 'high'
+          AND COALESCE(updated_at, created_at, NOW()) >= NOW() - (%s * INTERVAL '1 hour')
+        ORDER BY COALESCE(updated_at, created_at) DESC, incident_id DESC
+        LIMIT %s
+        """
+        return _fetch_all(
+            self._connection_factory,
+            query,
+            (lookback_hours, limit),
+            context=f"lookback_hours={lookback_hours} limit={limit}",
+        )
+
     def fetch_incident(self, incident_id: str) -> dict[str, Any] | None:
         logger.debug("Fetching incident incident_id=%s", incident_id)
         query = """

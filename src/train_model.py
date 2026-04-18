@@ -8,64 +8,17 @@ from typing import Any
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, classification_report, roc_auc_score
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.preprocessing import FunctionTransformer
 
+from .ebm_backend import EBMUnavailableError, train_ebm_incident_model
 from .logging_utils import configure_logging, get_logger
+from .modeling import ALL_FEATURES, build_incident_preprocessor
 from .weak_label import apply_weak_labels, load_label_rules
 
-
-NUMERIC_FEATURES = [
-    "incident_duration_seconds",
-    "event_count",
-    "distinct_event_names",
-    "distinct_event_sources",
-    "distinct_regions",
-    "error_event_count",
-    "success_event_count",
-    "failure_ratio",
-    "events_per_minute",
-]
-
-BOOLEAN_FEATURES = [
-    "contains_console_login",
-    "contains_recon_like_api",
-    "contains_privilege_change_api",
-    "contains_resource_creation_api",
-    "actor_is_root",
-    "actor_is_assumed_role",
-    "has_high_failure_ratio",
-    "has_failure_burst",
-    "has_event_burst",
-    "has_broad_surface_area",
-    "has_iam_sequence",
-    "has_sts_sequence",
-    "has_ec2_sequence",
-    "has_recon_plus_privilege",
-    "has_recon_plus_resource_creation",
-    "has_privilege_plus_resource_creation",
-    "has_root_plus_privilege",
-]
-
-CATEGORICAL_FEATURES = [
-    "actor_key",
-    "primary_source_ip_address",
-    "first_event_name",
-    "last_event_name",
-    "top_event_name",
-]
-
 logger = get_logger(__name__)
-
-
-def _boolean_to_float(values):
-    return values.astype(float)
 
 
 def main() -> int:
@@ -80,6 +33,12 @@ def main() -> int:
         "--label-rules",
         default="configs/incident_label_rules.yaml",
         help="Weak-label rule config relative to project root.",
+    )
+    parser.add_argument(
+        "--model-backend",
+        default="ebm",
+        choices=["ebm", "logistic"],
+        help="Preferred model backend. EBM is attempted first and falls back to logistic when unavailable.",
     )
     parser.add_argument("--artifacts-dir", default="artifacts", help="Artifact output directory relative to project root.")
     args = parser.parse_args()
@@ -103,7 +62,11 @@ def main() -> int:
     labeled.head(100000).to_csv(processed_root / "incidents_labeled_sample.csv", index=False)
     (reports_root / "incident_label_report.json").write_text(json.dumps(label_report, indent=2), encoding="utf-8")
 
-    model_report, scored = train_incident_model(labeled, artifacts_root / "incident_suspicion_model.joblib")
+    model_report, scored = train_incident_model(
+        labeled,
+        artifacts_root / "incident_suspicion_model.joblib",
+        preferred_model_type=args.model_backend,
+    )
     logger.info("Model training complete scored_rows=%s artifact=%s", len(scored), artifacts_root / "incident_suspicion_model.joblib")
     scored.to_parquet(processed_root / "incidents_scored.parquet", index=False)
     scored.head(100000).to_csv(processed_root / "incidents_scored_sample.csv", index=False)
@@ -113,14 +76,32 @@ def main() -> int:
             "incidents": int(len(labeled)),
             "positives": int(labeled["weak_label_suspicious"].sum()),
             "artifact": str(artifacts_root / "incident_suspicion_model.joblib"),
+            "model_type": model_report.get("model_type"),
         }
     )
     return 0
 
 
-def train_incident_model(labeled: pd.DataFrame, artifact_path: Path) -> tuple[dict[str, Any], pd.DataFrame]:
+def train_incident_model(
+    labeled: pd.DataFrame,
+    artifact_path: Path,
+    preferred_model_type: str = "ebm",
+) -> tuple[dict[str, Any], pd.DataFrame]:
+    if preferred_model_type == "logistic":
+        return train_logistic_incident_model(labeled, artifact_path)
+    try:
+        logger.info("Attempting EBM training first")
+        return train_ebm_incident_model(labeled, artifact_path)
+    except EBMUnavailableError as exc:
+        logger.warning("EBM unavailable, falling back to logistic model: %s", exc)
+    except Exception:
+        logger.exception("EBM training failed, falling back to logistic model")
+    return train_logistic_incident_model(labeled, artifact_path)
+
+
+def train_logistic_incident_model(labeled: pd.DataFrame, artifact_path: Path) -> tuple[dict[str, Any], pd.DataFrame]:
     logger.info("Preparing training matrix rows=%s", len(labeled))
-    X = labeled[NUMERIC_FEATURES + BOOLEAN_FEATURES + CATEGORICAL_FEATURES].copy()
+    X = labeled[ALL_FEATURES].copy()
     y = labeled["weak_label_suspicious"].astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -132,42 +113,9 @@ def train_incident_model(labeled: pd.DataFrame, artifact_path: Path) -> tuple[di
     )
     logger.info("Split train_rows=%s test_rows=%s positive_rate=%.4f", len(X_train), len(X_test), float(y.mean()))
 
-    numeric_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="constant", fill_value=0.0)),
-            ("scaler", StandardScaler()),
-        ]
-    )
-    boolean_transformer = Pipeline(
-        steps=[
-            (
-                "cast",
-                FunctionTransformer(
-                    _boolean_to_float,
-                    feature_names_out="one-to-one",
-                ),
-            ),
-            ("imputer", SimpleImputer(strategy="constant", fill_value=0.0)),
-        ]
-    )
-    categorical_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="constant", fill_value="UNKNOWN")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore", min_frequency=10)),
-        ]
-    )
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, NUMERIC_FEATURES),
-            ("bool", boolean_transformer, BOOLEAN_FEATURES),
-            ("cat", categorical_transformer, CATEGORICAL_FEATURES),
-        ]
-    )
-
     model = Pipeline(
         steps=[
-            ("preprocessor", preprocessor),
+            ("preprocessor", build_incident_preprocessor()),
             (
                 "classifier",
                 LogisticRegression(max_iter=4000, class_weight="balanced", solver="saga"),
@@ -183,17 +131,20 @@ def train_incident_model(labeled: pd.DataFrame, artifact_path: Path) -> tuple[di
     scored_all = labeled.copy()
     scored_all["ml_suspicion_proba"] = model.predict_proba(X)[:, 1]
     scored_all["ml_suspicion_pred"] = (scored_all["ml_suspicion_proba"] >= 0.5).astype(int)
+    scored_all["model_type"] = "logistic"
 
     model_payload = {
         "model": model,
-        "feature_columns": NUMERIC_FEATURES + BOOLEAN_FEATURES + CATEGORICAL_FEATURES,
+        "feature_columns": ALL_FEATURES,
         "label_column": "weak_label_suspicious",
+        "model_type": "logistic",
     }
     joblib.dump(model_payload, artifact_path)
     logger.info("Model artifact written path=%s", artifact_path)
 
     top_coefficients = extract_top_coefficients(model, top_n=25)
     report = {
+        "model_type": "logistic",
         "note": "Metrics are measured against rule-derived weak labels, not analyst-confirmed malicious ground truth.",
         "train_rows": int(len(X_train)),
         "test_rows": int(len(X_test)),

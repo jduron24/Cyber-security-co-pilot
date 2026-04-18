@@ -40,6 +40,10 @@ export interface AgentQueryResponse {
 
 export interface IncidentWorkspaceResponse {
   incident: RecordShape;
+  evidencePackage: RecordShape | null;
+  detectorResult: RecordShape | null;
+  coverageAssessment: RecordShape | null;
+  decisionSupportResult: RecordShape | null;
   decisionSupport: RecordShape | null;
   coverageReview: RecordShape | null;
   operatorHistory: OperatorHistoryResponse | null;

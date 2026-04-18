@@ -5,6 +5,7 @@ pandas
 pyarrow
 PyYAML
 scikit-learn
+interpret
 joblib
 psycopg[binary]
 httpx

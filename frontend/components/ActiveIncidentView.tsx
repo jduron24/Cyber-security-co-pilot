@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { IncidentViewModel } from "@/lib/view-model";
 import { toneForCoverageStatus, toneForSeverity } from "@/lib/view-model";
 import { AgentPanel } from "./AgentPanel";
@@ -6,6 +7,7 @@ import type { RecordShape } from "@/types/api";
 
 export function ActiveIncidentView({
   viewModel,
+  viewMode,
   incidentLoading,
   incidentError,
   actionMessage,
@@ -27,6 +29,7 @@ export function ActiveIncidentView({
   onAgentAsk,
 }: {
   viewModel: IncidentViewModel;
+  viewMode: "simple" | "expert";
   incidentLoading: boolean;
   incidentError: string | null;
   actionMessage: string | null;
@@ -47,6 +50,159 @@ export function ActiveIncidentView({
   onAgentQuestionChange: (value: string) => void;
   onAgentAsk: () => void;
 }) {
+  const [openSignal, setOpenSignal] = useState<string | null>(null);
+  const isExpert = viewMode === "expert";
+
+  if (!isExpert) {
+    return (
+      <>
+        {viewModel.recommendationMayBeIncomplete ? (
+          <div className="warning-banner warning-banner--critical">
+            <strong>Recommendation may be incomplete.</strong>
+            <span>{viewModel.incompletenessWarning ?? viewModel.decisionRiskNote}</span>
+          </div>
+        ) : null}
+        {incidentError ? <div className="warning-banner">{incidentError}</div> : null}
+        {actionMessage ? <div className="success-banner">{actionMessage}</div> : null}
+
+        <section className="simple-workflow reveal reveal-delay-2">
+          <article className="card simple-card">
+            <div className="card-heading">
+              <span className="card-kicker">A. What happened?</span>
+              <StatusPill tone="critical">Incident</StatusPill>
+            </div>
+            <h3>{viewModel.title}</h3>
+            <p>{viewModel.summary}</p>
+            <div className="timeline-inline">
+              {viewModel.timeline.map((item) => (
+                <span className="timeline-chip" key={item.step + item.title}>
+                  {item.step}: {item.title}
+                </span>
+              ))}
+            </div>
+          </article>
+
+          <article className="card simple-card">
+            <div className="card-heading">
+              <span className="card-kicker">B. What should I do?</span>
+              <StatusPill tone="warning">
+                {viewModel.recommendedAction.requiresHumanApproval ? "Human decision needed" : "Suggested"}
+              </StatusPill>
+            </div>
+            <h3>{viewModel.recommendedAction.label}</h3>
+            <p>{viewModel.recommendedAction.reason}</p>
+            <p className="muted">{viewModel.decisionRiskNote}</p>
+            {viewModel.latestDecision ? (
+              <div className="latest-decision">
+                <strong>{viewModel.latestDecision.title}</strong>
+                <p>{viewModel.latestDecision.detail}</p>
+                {viewModel.latestDecision.rationale ? <p className="latest-decision-rationale">Rationale: {viewModel.latestDecision.rationale}</p> : null}
+              </div>
+            ) : null}
+          </article>
+
+          <article className="card simple-card">
+            <div className="card-heading">
+              <span className="card-kicker">C. What else could I do?</span>
+              <StatusPill tone="neutral">{viewModel.alternatives.length} alternatives</StatusPill>
+            </div>
+            <div className="decision-list">
+              {viewModel.alternatives.map((action) => (
+                <button
+                  className={`decision-item decision-item--selectable${
+                    selectedAlternativeId === action.actionId ? " decision-item--selected" : ""
+                  }`}
+                  key={action.actionId}
+                  onClick={() => onSelectAlternative(action.actionId)}
+                  type="button"
+                >
+                  <div>
+                    <div className="decision-label-row">
+                      <strong>{action.label}</strong>
+                    </div>
+                    <p>{action.reason}</p>
+                    <small>{action.tradeoff}</small>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </article>
+
+          <article className="card simple-card">
+            <div className="card-heading">
+              <span className="card-kicker">D. Did we check everything?</span>
+              <StatusPill tone={viewModel.recommendationMayBeIncomplete ? "warning" : "safe"}>
+                {viewModel.recommendationMayBeIncomplete ? "Incomplete" : "Sufficient"}
+              </StatusPill>
+            </div>
+            <div className="check-grid">
+              {viewModel.coverage.map((check) => (
+                <div className="check-card" key={check.category}>
+                  <div className="check-header">
+                    <strong>{check.category}</strong>
+                    <StatusPill tone={toneForCoverageStatus(check.rawStatus)}>{check.status}</StatusPill>
+                  </div>
+                  <p>{check.note}</p>
+                </div>
+              ))}
+            </div>
+            {viewModel.whatCouldChange.length ? (
+              <div className="detail-list">
+                <strong>What could change the decision</strong>
+                <ul>
+                  {viewModel.whatCouldChange.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="detail-list">
+              <strong>Why the system is concerned</strong>
+              <ul>
+                {viewModel.signals.map((signal) => (
+                  <li key={signal.label}>
+                    {signal.label}: {signal.detail}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </article>
+
+          <article className="card simple-card">
+            <div className="card-heading">
+              <span className="card-kicker">Record the human decision</span>
+              <StatusPill tone="safe">Audit recorded</StatusPill>
+            </div>
+            <label className="field-label" htmlFor="operator-rationale-simple">
+              Why are you taking this action?
+            </label>
+            <textarea
+              className="text-input"
+              id="operator-rationale-simple"
+              value={rationale}
+              onChange={(event) => onRationaleChange(event.target.value)}
+              placeholder="Record the human reasoning in plain language."
+            />
+            <div className="action-grid">
+              <button className="cta cta--primary" disabled={actionLoading} onClick={onApprove} type="button">
+                Approve recommendation
+              </button>
+              <button className="cta cta--secondary" disabled={actionLoading || !selectedAlternativeId} onClick={onAlternative} type="button">
+                Choose selected alternative
+              </button>
+              <button className="cta cta--secondary" disabled={actionLoading} onClick={onDoubleCheck} type="button">
+                Double check
+              </button>
+              <button className="cta cta--secondary" disabled={actionLoading} onClick={onEscalate} type="button">
+                Escalate
+              </button>
+            </div>
+          </article>
+        </section>
+      </>
+    );
+  }
+
   return (
     <>
       {viewModel.recommendationMayBeIncomplete ? (
@@ -89,37 +245,53 @@ export function ActiveIncidentView({
       </section>
 
       <section className="dashboard-grid dashboard-grid--app">
-        <article className="card card--primary reveal reveal-delay-2">
-          <div className="card-heading">
-            <span className="card-kicker">Why Sentinel is concerned</span>
-            <StatusPill tone="warning">{viewModel.signals.length} signals</StatusPill>
-          </div>
-          <ul className="signal-list">
-            {viewModel.signals.map((signal) => (
-              <li key={signal.label}>
-                <strong>{signal.label}</strong>
-                <p>{signal.detail}</p>
-              </li>
-            ))}
-          </ul>
-        </article>
-
-        <article className="card reveal reveal-delay-3">
-          <div className="card-heading">
-            <span className="card-kicker">Confidence</span>
-            <strong className="metric-value">{viewModel.confidence}%</strong>
-          </div>
-          <p className="muted">Use this as triage guidance, not autonomous authority.</p>
-          <div className="meter">
-            <div className="meter-track" aria-hidden="true">
-              <span className="meter-fill" style={{ width: `${viewModel.confidence}%` }} />
+        {isExpert ? (
+          <article className="card card--primary reveal reveal-delay-2">
+            <div className="card-heading">
+              <span className="card-kicker">Why Sentinel is concerned</span>
+              <StatusPill tone="warning">{viewModel.signals.length} signals</StatusPill>
             </div>
-          </div>
-          <div className="topbar-meta">
-            <StatusPill tone={toneForSeverity(viewModel.severity)}>{viewModel.severity}</StatusPill>
-            <StatusPill tone="warning">{incidentLoading ? "Loading" : "Live data"}</StatusPill>
-          </div>
-        </article>
+            <ul className="signal-list">
+              {viewModel.signals.map((signal) => (
+                <li key={signal.label}>
+                  <div className="signal-header">
+                    <strong>{signal.label}</strong>
+                    <button
+                      aria-expanded={openSignal === signal.label}
+                      aria-label={`Explain ${signal.label}`}
+                      className="info-button"
+                      onClick={() => setOpenSignal(openSignal === signal.label ? null : signal.label)}
+                      type="button"
+                    >
+                      i
+                    </button>
+                  </div>
+                  <p>{signal.detail}</p>
+                  {openSignal === signal.label ? <div className="signal-explanation">{signal.explanation}</div> : null}
+                </li>
+              ))}
+            </ul>
+          </article>
+        ) : null}
+
+        {isExpert ? (
+          <article className="card card--confidence reveal reveal-delay-3">
+            <div className="card-heading">
+              <span className="card-kicker">Confidence</span>
+              <strong className="metric-value">{viewModel.confidence}%</strong>
+            </div>
+            <p className="muted">Use this as triage guidance, not autonomous authority.</p>
+            <div className="meter">
+              <div className="meter-track" aria-hidden="true">
+                <span className="meter-fill" style={{ width: `${viewModel.confidence}%` }} />
+              </div>
+            </div>
+            <div className="topbar-meta">
+              <StatusPill tone={toneForSeverity(viewModel.severity)}>{viewModel.severity}</StatusPill>
+              <StatusPill tone="warning">{incidentLoading ? "Loading" : "Live data"}</StatusPill>
+            </div>
+          </article>
+        ) : null}
 
         <article className="card reveal reveal-delay-3">
           <div className="card-heading">
@@ -188,6 +360,8 @@ export function ActiveIncidentView({
             <div className="latest-decision">
               <strong>{viewModel.latestDecision.title}</strong>
               <p>{viewModel.latestDecision.detail}</p>
+              {viewModel.latestDecision.rationale ? <p className="latest-decision-rationale">Rationale: {viewModel.latestDecision.rationale}</p> : null}
+              {viewModel.latestDecision.recordedAt ? <small className="latest-decision-time">Recorded {viewModel.latestDecision.recordedAt}</small> : null}
             </div>
           ) : null}
           <label className="field-label" htmlFor="operator-rationale">

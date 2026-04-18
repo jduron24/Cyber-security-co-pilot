@@ -16,7 +16,8 @@ from src.services.decision_support_app_service import DecisionSupportAppService
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
-@router.get("", response_model=IncidentListResponse)
+@router.get("", response_model=IncidentListResponse, include_in_schema=False)
+@router.get("/", response_model=IncidentListResponse)
 def list_incidents(
     limit: int = Query(25, ge=1, le=100),
     repositories: CoverageReviewRepositoryBundle = Depends(get_coverage_review_repositories),

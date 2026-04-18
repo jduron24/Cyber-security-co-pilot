@@ -15,6 +15,10 @@ pip install -r requirements.txt
 Edit `.env` and set your database URL:
 ```
 POSTGRES_DSN=postgresql://jonathanduron@localhost:5432/cyber_copilot
+RESEND_API_KEY=re_xxxxxxxxx
+ALERT_EMAIL_FROM=Sentinel <alerts@yourdomain.com>
+ALERT_EMAIL_TO=you@example.com,ops@example.com
+ALERT_EMAIL_ENABLED=true
 ```
 
 ## 4. Start PostgreSQL
@@ -63,4 +67,24 @@ Docs at:     http://localhost:8000/docs
 ### Example search
 ```bash
 curl "http://localhost:8000/search?q=brute+force+login"
+```
+
+### Example high-priority alert trigger
+If an incident has `severity_hint = high`, generating decision support will automatically attempt a Resend email alert once per incident/recipient:
+
+```bash
+curl "http://localhost:8000/incidents/incident_000000001/decision-support"
+```
+
+### Hourly alert scan
+To scan the last hour of high-severity incidents and send deduplicated email alerts:
+
+```bash
+backend/.venv/bin/python scripts/send_hourly_alerts.py --lookback-hours 1 --limit 100
+```
+
+Example cron entry to run the scan every hour:
+
+```bash
+0 * * * * cd /Users/jonathanduron/Desktop/gitRepos/cyber-co-pilot && /Users/jonathanduron/Desktop/gitRepos/cyber-co-pilot/backend/.venv/bin/python scripts/send_hourly_alerts.py --lookback-hours 1 --limit 100 >> /tmp/sentinel-hourly-alerts.log 2>&1
 ```

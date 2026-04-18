@@ -9,8 +9,8 @@ describe("QueuePanel", () => {
     render(
       <QueuePanel
         queue={[
-          { id: "incident_1", site: "site-a", severity: "High", state: "Needs review" },
-          { id: "incident_2", site: "site-b", severity: "Low", state: "Closed" },
+          { id: "incident_1", label: "INC-1042", site: "site-a", severity: "High", state: "Needs review" },
+          { id: "incident_2", label: "INC-1038", site: "site-b", severity: "Low", state: "Closed" },
         ]}
         selectedIncidentId="incident_1"
         queueError={null}
@@ -18,7 +18,7 @@ describe("QueuePanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /incident_2/i }));
+    fireEvent.click(screen.getByRole("button", { name: /inc-1038/i }));
     expect(onSelectIncident).toHaveBeenCalledWith("incident_2");
   });
 });
