@@ -130,4 +130,32 @@ describe("view-model helpers", () => {
     expect(displayLabel("checked_signal_found")).toBe("Checked, signal found");
     expect(displayLabel("temporary_access_lock")).toBe("Temporarily lock access");
   });
+
+  it("falls back to detector model fields and EBM feature contributions", () => {
+    const model = buildIncidentViewModel(
+      {
+        incident_id: "incident_2",
+        title: "Detector-backed incident",
+      },
+      null,
+      {
+        risk_score: 0.91,
+        model_type: "ebm",
+        model_version: "test_ebm_model.pkl",
+        feature_contributions_json: [{ feature: "failure_ratio", contribution: 0.44 }],
+      },
+      null,
+      null,
+      null,
+      null,
+      null,
+      "incident_2",
+    );
+
+    expect(model.confidence).toBe(91);
+    expect(model.modelType).toBe("ebm");
+    expect(model.modelVersion).toBe("test_ebm_model.pkl");
+    expect(model.signals[0].label).toBe("Failure Ratio");
+    expect(model.signals[0].detail).toContain("Increases suspicion");
+  });
 });

@@ -131,16 +131,20 @@ export function ActiveIncidentView({
             </div>
           </article>
 
-          <article className="card simple-card">
-            <div className="card-heading">
-              <span className="card-kicker">D. Did we check everything?</span>
-              <StatusPill tone={viewModel.recommendationMayBeIncomplete ? "warning" : "safe"}>
-                {viewModel.recommendationMayBeIncomplete ? "Incomplete" : "Sufficient"}
-              </StatusPill>
-            </div>
-            <div className="check-grid">
-              {viewModel.coverage.map((check) => (
-                <div className="check-card" key={check.category}>
+        <article className="card simple-card">
+          <div className="card-heading">
+            <span className="card-kicker">D. Did we check everything?</span>
+            <StatusPill tone={viewModel.recommendationMayBeIncomplete ? "warning" : "safe"}>
+              {viewModel.recommendationMayBeIncomplete ? "Incomplete" : "Sufficient"}
+            </StatusPill>
+          </div>
+          <p className="muted">
+            Model: {viewModel.modelType}
+            {viewModel.modelVersion ? ` (${viewModel.modelVersion})` : ""}
+          </p>
+          <div className="check-grid">
+            {viewModel.coverage.map((check) => (
+              <div className="check-card" key={check.category}>
                   <div className="check-header">
                     <strong>{check.category}</strong>
                     <StatusPill tone={toneForCoverageStatus(check.rawStatus)}>{check.status}</StatusPill>
@@ -283,6 +287,10 @@ export function ActiveIncidentView({
               <span className="card-kicker">Confidence</span>
               <strong className="metric-value">{viewModel.confidence}%</strong>
             </div>
+            <p className="muted">
+              Model: {viewModel.modelType}
+              {viewModel.modelVersion ? ` (${viewModel.modelVersion})` : ""}
+            </p>
             <p className="muted">Use this as triage guidance, not autonomous authority.</p>
             <div className="meter">
               <div className="meter-track" aria-hidden="true">

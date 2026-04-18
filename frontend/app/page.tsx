@@ -9,12 +9,6 @@ import { ApiError, getAgentAuth, listIncidents, loadIncidentWorkspace, postAgent
 import { buildIncidentViewModel, mapQueueItem } from "@/lib/view-model";
 import type { OperatorHistoryResponse, RecordShape } from "@/types/api";
 
-const fallbackQueue = [
-  { id: "INC-1042", label: "INC-1042", site: "Water Plant East", severity: "High", state: "Needs review" },
-  { id: "INC-1038", label: "INC-1038", site: "County Records", severity: "Medium", state: "Monitoring" },
-  { id: "INC-1033", label: "INC-1033", site: "City Hospital Annex", severity: "Low", state: "Closed" },
-];
-
 function logPage(event: string, payload?: unknown): void {
   console.info(`[frontend/page] ${event}`, payload ?? "");
 }
@@ -22,9 +16,9 @@ function logPage(event: string, payload?: unknown): void {
 export default function Home() {
   const [viewMode, setViewMode] = useState<"simple" | "expert">("simple");
   const [selectedView, setSelectedView] = useState<"active" | "audit">("active");
-  const [queue, setQueue] = useState(fallbackQueue);
+  const [queue, setQueue] = useState<Array<{ id: string; label: string; site: string; severity: string; state: string }>>([]);
   const [queueError, setQueueError] = useState<string | null>(null);
-  const [selectedIncidentId, setSelectedIncidentId] = useState<string>(fallbackQueue[0].id);
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string>("");
   const [incident, setIncident] = useState<RecordShape | null>(null);
   const [incidentEvents, setIncidentEvents] = useState<RecordShape[]>([]);
   const [evidencePackage, setEvidencePackage] = useState<RecordShape | null>(null);
@@ -85,7 +79,13 @@ export default function Home() {
         logPage("load_queue_start");
         const result = await listIncidents();
         logPage("load_queue_result", { count: result.length, incidents: result });
-        if (cancelled || result.length === 0) return;
+        if (cancelled) return;
+        if (result.length === 0) {
+          setQueue([]);
+          setSelectedIncidentId("");
+          setQueueError("No incidents returned from backend.");
+          return;
+        }
         const mapped = result.map(mapQueueItem);
         logPage("load_queue_mapped", mapped);
         setQueue(mapped);
@@ -94,6 +94,8 @@ export default function Home() {
       } catch (error) {
         if (cancelled) return;
         console.error("[frontend/page] load_queue_failed", error);
+        setQueue([]);
+        setSelectedIncidentId("");
         setQueueError(error instanceof ApiError ? error.message : "Could not load incidents.");
       }
     }
