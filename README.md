@@ -24,6 +24,12 @@ For each incident, the system:
 
 That blind-spot visibility is the main product differentiator.
 
+Sentinel also has a technically sophisticated expert-support layer behind the operator workflow:
+- a grounded ReAct-style agent loop that reasons step by step through explicit tool calls
+- incident-context tools for incidents, detector results, coverage state, and decision support
+- an MCP-backed cyber knowledge path that can retrieve MITRE ATT&CK tactics, techniques, and mitigations
+- auditable reasoning that experts can inspect instead of a black-box chatbot answer
+
 ## What A Judge Should Understand Quickly
 
 This is a decision-support product for security operations, not just a detection model and not just a chatbot.
@@ -112,7 +118,7 @@ flowchart LR
 - Coverage and blind-spot tracking by evidence category
 - Decision-support engine with recommendations and alternatives
 - Human decision audit trail and incident report generation
-- Grounded incident agent using OpenAI-compatible APIs
+- Grounded incident agent with a ReAct-style tool loop and MCP-based MITRE ATT&CK context retrieval
 - Operator UI with simple and expert workflows
 
 ## Fastest Way To Run The Demo
@@ -216,6 +222,29 @@ The system can carry:
 - feature contributions
 
 Those explanations are surfaced in the expert workflow alongside human-readable signal summaries.
+
+## Agent Architecture
+
+The agent is not a generic chat layer attached to the product.
+
+It uses a structured ReAct-style loop implemented in [`src/agent/react.py`](C:/Users/ejtal/Downloads/judgment_drift/Cyber-security-co-pilot/src/agent/react.py) and [`src/agent/tools.py`](C:/Users/ejtal/Downloads/judgment_drift/Cyber-security-co-pilot/src/agent/tools.py).
+
+That loop requires the model to:
+- load incident context first
+- pull additional grounded evidence before answering
+- use coverage and decision-support tools when relevant
+- call the cyber-context tool for ATT&CK, threat, mitigation, or technique questions
+
+This gives the expert workflow more than a conversational veneer. It gives it a constrained reasoning process over explicit system tools.
+
+For external cyber context, Sentinel can call an MCP server through [`src/agent/mcp_client.py`](C:/Users/ejtal/Downloads/judgment_drift/Cyber-security-co-pilot/src/agent/mcp_client.py) and [`mcp_server/src/index.ts`](C:/Users/ejtal/Downloads/judgment_drift/Cyber-security-co-pilot/mcp_server/src/index.ts).
+
+That MCP path exposes:
+- MITRE ATT&CK tactic search
+- technique lookup
+- mitigation-oriented context retrieval
+
+The result is an expert-assist layer that can connect incident evidence to recognized cyber tradecraft while staying auditable and grounded.
 
 ## Testing Status
 

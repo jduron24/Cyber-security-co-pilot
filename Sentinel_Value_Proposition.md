@@ -84,6 +84,24 @@ Every assessment includes confidence and supporting context so experts can valid
 
 In national security and public-sector environments, that auditability is not optional. It is required.
 
+## Why the expert workflow is technically credible
+
+Sentinel's expert mode is not just a prettier way to display logs.
+
+Behind it is a grounded agent architecture built around a ReAct-style reasoning loop. The agent does not simply answer from a prompt. It is required to pull incident context, detector outputs, coverage state, and decision-support results through explicit tools before it can answer.
+
+That means experts are not receiving an ungrounded chatbot response. They are receiving an answer built from a constrained reasoning process over the actual incident data.
+
+Sentinel also supports an MCP-connected cyber knowledge path that can retrieve MITRE ATT&CK tactics, techniques, and mitigations. That lets the expert workflow connect what happened in the incident to recognized adversary behavior and response guidance.
+
+This matters because sophisticated users do not just want a conclusion. They want:
+- the evidence
+- the sequence of events
+- the system's reasoning path
+- the outside technical context needed to validate the assessment
+
+Sentinel is built to provide all four.
+
 ## The value proposition
 
 Sentinel is not just about usability. It is about operational efficiency at scale.
