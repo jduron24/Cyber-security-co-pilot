@@ -92,7 +92,9 @@ def test_backend_health_and_search_routes(monkeypatch):
     app.dependency_overrides[get_knowledge_base_repository] = lambda: FakeKnowledgeBaseRepository()
     client = TestClient(app)
 
-    assert client.get("/health").json() == {"status": "ok"}
+    health_response = client.get("/health", headers={"X-Request-ID": "req-backend-1"})
+    assert health_response.json() == {"status": "ok"}
+    assert health_response.headers["x-request-id"] == "req-backend-1"
     response = client.get("/search", params={"q": "brute force login", "limit": 1})
     assert response.status_code == 200
     assert response.json()["results"][0]["title"] == "T1110"

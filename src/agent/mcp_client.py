@@ -70,7 +70,12 @@ class McpCyberContextClient:
             child_env.update({key: str(value) for key, value in self.env.items() if value is not None})
         if child_env.get("POSTGRES_DSN") and not child_env.get("DATABASE_URL"):
             child_env["DATABASE_URL"] = child_env["POSTGRES_DSN"]
-        logger.info("Querying MCP cyber context query=%s limit=%s", query, limit)
+        logger.info(
+            "Querying MCP cyber context limit=%s query_chars=%s token_count=%s",
+            limit,
+            len(query),
+            len(_normalize_query(query).split(" & ")) if _normalize_query(query) else 0,
+        )
         completed = subprocess.run(
             command,
             cwd=str(mcp_root),
@@ -85,11 +90,16 @@ class McpCyberContextClient:
         return _parse_tool_rows(completed.stdout)
 
     def _search_via_postgres(self, query: str, limit: int) -> list[dict[str, Any]]:
-        logger.info("Querying fallback Postgres cyber context query=%s limit=%s", query, limit)
         config = load_postgres_config(self.env)
         tsquery = _normalize_query(query)
         if not tsquery:
             return []
+        logger.info(
+            "Querying fallback Postgres cyber context limit=%s query_chars=%s token_count=%s",
+            limit,
+            len(query),
+            len(tsquery.split(" & ")),
+        )
         sql = """
         SELECT title, content, entry_type, kd.name AS domain,
                ts_rank(ke.search_vector, to_tsquery('english', %s)) AS score

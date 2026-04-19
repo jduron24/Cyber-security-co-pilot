@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from src.logging_utils import configure_logging
+from src.logging_utils import configure_logging, reset_request_id, set_request_id
 
 from .api.health import router as health_router
 from .api.incidents import router as incidents_router
@@ -25,6 +27,18 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def attach_request_id(request, call_next):
+        request_id = request.headers.get("x-request-id") or uuid4().hex[:12]
+        token = set_request_id(request_id)
+        try:
+            response = await call_next(request)
+        finally:
+            reset_request_id(token)
+        response.headers["X-Request-ID"] = request_id
+        return response
+
     app.include_router(health_router)
     app.include_router(search_router)
     app.include_router(incidents_router)

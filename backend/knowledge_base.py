@@ -25,7 +25,12 @@ class KnowledgeBaseRepository:
         tsquery = normalize_query(query)
         if not tsquery:
             return []
-        logger.debug("Searching knowledge base limit=%s tsquery=%s", limit, tsquery)
+        logger.debug(
+            "Searching knowledge base limit=%s query_chars=%s token_count=%s",
+            limit,
+            len(query or ""),
+            len(tsquery.split(" & ")),
+        )
         sql = """
         SELECT title, content, entry_type, kd.name AS domain,
                ts_rank(ke.search_vector, to_tsquery('english', %s)) AS score
