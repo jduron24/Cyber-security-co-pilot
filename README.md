@@ -15,32 +15,32 @@ Most security copilots focus on giving a better answer.
 Sentinel focuses on making incomplete reasoning visible.
 
 For each incident, the system:
-- summarizes what happened in plain language
-- recommends an action
-- shows 2-3 alternatives with tradeoffs
-- exposes blind spots such as evidence that was not checked or could not be checked
-- lets a human approve, choose an alternative, ask for more analysis, or escalate
-- records the decision and generates an audit report
+- Summarizes what happened in plain language
+- Recommends an action
+- Shows 2-3 alternatives with tradeoffs
+- Exposes blind spots such as evidence that was not checked or could not be checked
+- Lets a human approve, choose an alternative, ask for more analysis, or escalate
+- Records the decision and generates an audit report
 
 That blind-spot visibility is the main product differentiator.
 
 Sentinel also has a technically sophisticated expert-support layer behind the operator workflow:
-- a grounded ReAct-style agent loop that reasons step by step through explicit tool calls
-- incident-context tools for incidents, detector results, coverage state, and decision support
-- an MCP-backed cyber knowledge path that can retrieve MITRE ATT&CK tactics, techniques, and mitigations
-- auditable reasoning that experts can inspect instead of a black-box chatbot answer
+- A grounded ReAct-style agent loop that reasons step by step through explicit tool calls
+- Incident-context tools for incidents, detector results, coverage state, and decision support
+- An MCP-backed cyber knowledge path that can retrieve MITRE ATT&CK tactics, techniques, and mitigations
+- Auditable reasoning that experts can inspect instead of a black-box chatbot answer
 
 ## What A Judge Should Understand Quickly
 
 This is a decision-support product for security operations, not just a detection model and not just a chatbot.
 
 The main workflow is:
-1. ingest cloud activity
-2. form an incident
-3. generate a recommended action and alternatives
-4. show checked vs not checked evidence
-5. let a human choose
-6. log the decision trace and generate a report
+1. Ingest cloud activity
+2. Form an incident
+3. Generate a recommended action and alternatives
+4. Show checked vs not checked evidence
+5. Let a human choose
+6. Log the decision trace and generate a report
 
 The project is successful when a non-expert can answer four questions from the UI:
 1. What happened?
@@ -53,12 +53,12 @@ The project is successful when a non-expert can answer four questions from the U
 The strongest demo path is an incomplete incident.
 
 Example:
-1. the system sees suspicious login and follow-on activity
-2. it recommends resetting credentials
-3. it clearly shows that a key branch such as network evidence was not checked
-4. it warns that the recommendation may be incomplete
-5. the operator uses the double-check flow or chooses a safer alternative
-6. the system logs that decision and produces a report
+1. The system sees suspicious login and follow-on activity
+2. It recommends resetting credentials
+3. It clearly shows that a key branch such as network evidence was not checked
+4. It warns that the recommendation may be incomplete
+5. The operator uses the double-check flow or chooses a safer alternative
+6. The system logs that decision and produces a report
 
 That is the value: not just a recommendation, but visible uncertainty and visible blind spots.
 
