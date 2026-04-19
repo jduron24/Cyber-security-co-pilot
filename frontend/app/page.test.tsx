@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+import * as api from "@/lib/api";
 import Home from "./page";
 
 vi.mock("next/image", () => ({
@@ -151,15 +152,22 @@ vi.mock("@/lib/api", () => ({
 }));
 
 describe("Home page view switching", () => {
-  it("switches between simple and expert views and exposes the audit tab only in expert mode", async () => {
-    render(<Home />);
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
 
+  async function renderLoadedHome() {
+    render(<Home />);
     await waitFor(() => {
       expect(screen.getByText(/a\. what happened\?/i)).toBeInTheDocument();
     });
     await waitFor(() => {
       expect(screen.getByText(/reset credentials/i)).toBeInTheDocument();
     });
+  }
+
+  it("switches between simple and expert views and exposes the audit tab only in expert mode", async () => {
+    await renderLoadedHome();
 
     expect(screen.queryByRole("button", { name: /audit trail/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/why this incident was flagged/i)).not.toBeInTheDocument();
@@ -176,5 +184,122 @@ describe("Home page view switching", () => {
     fireEvent.click(screen.getByRole("button", { name: /^simple$/i }));
     expect(screen.getByText(/a\. what happened\?/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /audit trail/i })).not.toBeInTheDocument();
+  });
+
+  it("submits approval and shows the generated report", async () => {
+    vi.mocked(api.postApprove).mockResolvedValue({
+      decision_type: "approve_recommendation",
+      chosen_action: {
+        action_id: "reset_credentials",
+        label: "Reset credentials",
+      },
+      report: {
+        incident_id: "incident_000000001",
+        severity: "Medium",
+        generated_at: "2026-04-18T09:30:00Z",
+        title: "Approval report",
+        summary: "The operator approved a credential reset after suspicious sign-in activity.",
+        approved_action: {
+          label: "Reset credentials",
+          reason: "Contain the account.",
+        },
+        operator_rationale: "Contain the account before more changes happen.",
+        why_sentinel_is_concerned: ["Someone signed in and then changed access."],
+        blind_spots: ["Network logs are still missing."],
+      },
+    });
+
+    await renderLoadedHome();
+
+    fireEvent.change(screen.getByLabelText(/why are you taking this action/i), {
+      target: { value: "Contain the account before more changes happen." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /approve recommendation/i }));
+
+    await waitFor(() => {
+      expect(api.postApprove).toHaveBeenCalledWith(
+        "incident_000000001",
+        expect.objectContaining({
+          rationale: "Contain the account before more changes happen.",
+          used_double_check: false,
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/report drafted/i)).toBeInTheDocument();
+      expect(screen.getByText(/the operator approved a credential reset/i)).toBeInTheDocument();
+    });
+  });
+
+  it("loads the latest report from the workspace action", async () => {
+    vi.mocked(api.getLatestReport).mockResolvedValue({
+      incident_id: "incident_000000001",
+      severity: "Medium",
+      generated_at: "2026-04-18T09:35:00Z",
+      title: "Latest report",
+      summary: "Latest stored report summary.",
+      approved_action: {
+        label: "Reset credentials",
+        reason: "Contain the account.",
+      },
+      operator_rationale: "Review completed.",
+      why_sentinel_is_concerned: ["The account showed suspicious behavior."],
+      blind_spots: ["Network logs are still missing."],
+    });
+
+    await renderLoadedHome();
+
+    fireEvent.click(screen.getByRole("button", { name: /view latest report/i }));
+
+    await waitFor(() => {
+      expect(api.getLatestReport).toHaveBeenCalledWith("incident_000000001");
+      expect(screen.getByText(/latest stored report summary/i)).toBeInTheDocument();
+    });
+  });
+
+  it("submits an alternative action selection", async () => {
+    vi.mocked(api.postAlternative).mockResolvedValue({
+      decision_type: "choose_alternative",
+      chosen_action: {
+        action_id: "collect_more_evidence",
+        label: "Collect more evidence",
+      },
+    });
+
+    await renderLoadedHome();
+
+    fireEvent.click(screen.getByRole("button", { name: /collect more evidence/i }));
+    fireEvent.click(screen.getByRole("button", { name: /choose selected alternative/i }));
+
+    await waitFor(() => {
+      expect(api.postAlternative).toHaveBeenCalledWith(
+        "incident_000000001",
+        expect.objectContaining({
+          action_id: "collect_more_evidence",
+          used_double_check: false,
+        }),
+      );
+    });
+  });
+
+  it("asks the agent in expert view and renders the answer", async () => {
+    vi.mocked(api.postAgentQuery).mockResolvedValue({
+      answer: "Reset the credentials first, then review the missing network evidence.",
+    });
+
+    await renderLoadedHome();
+
+    fireEvent.click(screen.getByRole("button", { name: /^expert$/i }));
+    fireEvent.change(screen.getByLabelText(/ask the agent/i), {
+      target: { value: "What should I do next?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^ask$/i }));
+
+    await waitFor(() => {
+      expect(api.postAgentQuery).toHaveBeenCalledWith("incident_000000001", {
+        user_query: "What should I do next?",
+      });
+      expect(screen.getByText(/reset the credentials first/i)).toBeInTheDocument();
+    });
   });
 });

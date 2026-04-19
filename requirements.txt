@@ -10,5 +10,6 @@ joblib
 psycopg[binary]
 httpx
 pytest
+pytest-cov
 pgembed
 streamlit

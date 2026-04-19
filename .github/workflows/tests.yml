@@ -76,11 +76,13 @@ jobs:
           PY
 
       - name: Run test suite
-        run: python -m pytest tests -q --junitxml=pytest-report.xml
+        run: python -m pytest tests -q --junitxml=pytest-report.xml --cov=src --cov=backend --cov=agent_backend --cov=decision_support --cov-report=term-missing --cov-report=xml --cov-fail-under=70
 
       - name: Upload pytest report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pytest-report
-          path: pytest-report.xml
+          path: |
+            pytest-report.xml
+            coverage.xml

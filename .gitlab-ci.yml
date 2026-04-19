@@ -58,10 +58,11 @@ pytest:
               time.sleep(2)
       PY
   script:
-    - python -m pytest tests -q --junitxml=pytest-report.xml
+    - python -m pytest tests -q --junitxml=pytest-report.xml --cov=src --cov=backend --cov=agent_backend --cov=decision_support --cov-report=term-missing --cov-report=xml --cov-fail-under=70
   artifacts:
     when: always
     reports:
       junit: pytest-report.xml
     paths:
       - pytest-report.xml
+      - coverage.xml
